@@ -1,0 +1,640 @@
+<!doctype html>
+<html>
+<head>
+<title>/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_range.c</title>
+<style type="text/css">
+ body { color:#000000; background-color:#ffffff }
+ body { font-family:Helvetica, sans-serif; font-size:10pt }
+ h1 { font-size:14pt }
+ .code { border-collapse:collapse; width:100%; }
+ .code { font-family: "Monospace", monospace; font-size:10pt }
+ .code { line-height: 1.2em }
+ .comment { color: green; font-style: oblique }
+ .keyword { color: blue }
+ .string_literal { color: red }
+ .directive { color: darkmagenta }
+ .expansion { display: none; }
+ .macro:hover .expansion { display: block; border: 2px solid #FF0000; padding: 2px; background-color:#FFF0F0; font-weight: normal;   -webkit-border-radius:5px;  -webkit-box-shadow:1px 1px 7px #000; position: absolute; top: -1em; left:10em; z-index: 1 } 
+ .macro { color: darkmagenta; background-color:LemonChiffon; position: relative }
+ .num { width:2.5em; padding-right:2ex; background-color:#eeeeee }
+ .num { text-align:right; font-size:8pt }
+ .num { color:#444444 }
+ .line { padding-left: 1ex; border-left: 3px solid #ccc }
+ .line { white-space: pre }
+ .msg { -webkit-box-shadow:1px 1px 7px #000 }
+ .msg { -webkit-border-radius:5px }
+ .msg { font-family:Helvetica, sans-serif; font-size:8pt }
+ .msg { float:left }
+ .msg { padding:0.25em 1ex 0.25em 1ex }
+ .msg { margin-top:10px; margin-bottom:10px }
+ .msg { font-weight:bold }
+ .msg { max-width:60em; word-wrap: break-word; white-space: pre-wrap }
+ .msgT { padding:0x; spacing:0x }
+ .msgEvent { background-color:#fff8b4; color:#000000 }
+ .msgControl { background-color:#bbbbbb; color:#000000 }
+ .mrange { background-color:#dfddf3 }
+ .mrange { border-bottom:1px solid #6F9DBE }
+ .PathIndex { font-weight: bold; padding:0px 5px; margin-right:5px; }
+ .PathIndex { -webkit-border-radius:8px }
+ .PathIndexEvent { background-color:#bfba87 }
+ .PathIndexControl { background-color:#8c8c8c }
+ .PathNav a { text-decoration:none; font-size: larger }
+ .CodeInsertionHint { font-weight: bold; background-color: #10dd10 }
+ .CodeRemovalHint { background-color:#de1010 }
+ .CodeRemovalHint { border-bottom:1px solid #6F9DBE }
+ table.simpletable {
+   padding: 5px;
+   font-size:12pt;
+   margin:20px;
+   border-collapse: collapse; border-spacing: 0px;
+ }
+ td.rowname {
+   text-align:right; font-weight:bold; color:#444444;
+   padding-right:2ex; }
+</style>
+</head>
+<body>
+<!-- BUGDESC Assigned value is garbage or undefined -->
+
+<!-- BUGTYPE Assigned value is garbage or undefined -->
+
+<!-- BUGCATEGORY Logic error -->
+
+<!-- BUGFILE /cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_range.c -->
+
+<!-- FILENAME isl_range.c -->
+
+<!-- FUNCTIONNAME propagate_on_domain -->
+
+<!-- ISSUEHASHCONTENTOFLINEINCONTEXT cd1f9d314c93790fd8791b04c792004c -->
+
+<!-- BUGLINE 410 -->
+
+<!-- BUGCOLUMN 2 -->
+
+<!-- BUGPATHLENGTH 13 -->
+
+<!-- BUGMETAEND -->
+<!-- REPORTHEADER -->
+<h3>Bug Summary</h3>
+<table class="simpletable">
+<tr><td class="rowname">File:</td><td>External/isl/isl_range.c</td></tr>
+<tr><td class="rowname">Location:</td><td><a href="#EndPath">line 410, column 2</a></td></tr>
+<tr><td class="rowname">Description:</td><td>Assigned value is garbage or undefined</td></tr>
+</table>
+<!-- REPORTSUMMARYEXTRA -->
+<h3>Annotated Source Code</h3>
+<table class="code">
+<tr><td class="num" id="LN1">1</td><td class="line"><span class='directive'>#include &lt;isl_ctx_private.h&gt;</span></td></tr>
+<tr><td class="num" id="LN2">2</td><td class="line"><span class='directive'>#include &lt;isl_constraint_private.h&gt;</span></td></tr>
+<tr><td class="num" id="LN3">3</td><td class="line"><span class='directive'>#include &lt;isl/set.h&gt;</span></td></tr>
+<tr><td class="num" id="LN4">4</td><td class="line"><span class='directive'>#include &lt;isl_polynomial_private.h&gt;</span></td></tr>
+<tr><td class="num" id="LN5">5</td><td class="line"><span class='directive'>#include &lt;isl_morph.h&gt;</span></td></tr>
+<tr><td class="num" id="LN6">6</td><td class="line"><span class='directive'>#include &lt;isl_range.h&gt;</span></td></tr>
+<tr><td class="num" id="LN7">7</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN8">8</td><td class="line"><span class='keyword'>struct</span> range_data {</td></tr>
+<tr><td class="num" id="LN9">9</td><td class="line">	<span class='keyword'>struct</span> isl_bound	*bound;</td></tr>
+<tr><td class="num" id="LN10">10</td><td class="line">	<span class='keyword'>int</span> 		    	*signs;</td></tr>
+<tr><td class="num" id="LN11">11</td><td class="line">	<span class='keyword'>int</span>			sign;</td></tr>
+<tr><td class="num" id="LN12">12</td><td class="line">	<span class='keyword'>int</span>			test_monotonicity;</td></tr>
+<tr><td class="num" id="LN13">13</td><td class="line">	<span class='keyword'>int</span>		    	monotonicity;</td></tr>
+<tr><td class="num" id="LN14">14</td><td class="line">	<span class='keyword'>int</span>			tight;</td></tr>
+<tr><td class="num" id="LN15">15</td><td class="line">	isl_qpolynomial	    	*poly;</td></tr>
+<tr><td class="num" id="LN16">16</td><td class="line">	isl_pw_qpolynomial_fold *pwf;</td></tr>
+<tr><td class="num" id="LN17">17</td><td class="line">	isl_pw_qpolynomial_fold *pwf_tight;</td></tr>
+<tr><td class="num" id="LN18">18</td><td class="line">};</td></tr>
+<tr><td class="num" id="LN19">19</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN20">20</td><td class="line"><span class='keyword'>static</span> isl_stat propagate_on_domain(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_basic_set *bset,</td></tr>
+<tr><td class="num" id="LN21">21</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_qpolynomial *poly, <span class='keyword'>struct</span> range_data *data);</td></tr>
+<tr><td class="num" id="LN22">22</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN23">23</td><td class="line"><span class='comment'>/* Check whether the polynomial "poly" has sign "sign" over "bset",</span></td></tr>
+<tr><td class="num" id="LN24">24</td><td class="line"> <span class='comment'>* i.e., if sign == 1, check that the lower bound on the polynomial</span></td></tr>
+<tr><td class="num" id="LN25">25</td><td class="line"> <span class='comment'>* is non-negative and if sign == -1, check that the upper bound on</span></td></tr>
+<tr><td class="num" id="LN26">26</td><td class="line"> <span class='comment'>* the polynomial is non-positive.</span></td></tr>
+<tr><td class="num" id="LN27">27</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN28">28</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>int</span> has_sign(__isl_keep isl_basic_set *bset,</td></tr>
+<tr><td class="num" id="LN29">29</td><td class="line">	__isl_keep isl_qpolynomial *poly, <span class='keyword'>int</span> sign, <span class='keyword'>int</span> *signs)</td></tr>
+<tr><td class="num" id="LN30">30</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN31">31</td><td class="line">	<span class='keyword'>struct</span> range_data data_m;</td></tr>
+<tr><td class="num" id="LN32">32</td><td class="line">	<span class='keyword'>unsigned</span> nparam;</td></tr>
+<tr><td class="num" id="LN33">33</td><td class="line">	isl_space *dim;</td></tr>
+<tr><td class="num" id="LN34">34</td><td class="line">	isl_val *opt;</td></tr>
+<tr><td class="num" id="LN35">35</td><td class="line">	<span class='keyword'>int</span> r;</td></tr>
+<tr><td class="num" id="LN36">36</td><td class="line">	<span class='keyword'>enum</span> isl_fold type;</td></tr>
+<tr><td class="num" id="LN37">37</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN38">38</td><td class="line">	nparam = isl_basic_set_dim(bset, isl_dim_param);</td></tr>
+<tr><td class="num" id="LN39">39</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN40">40</td><td class="line">	bset = isl_basic_set_copy(bset);</td></tr>
+<tr><td class="num" id="LN41">41</td><td class="line">	poly = isl_qpolynomial_copy(poly);</td></tr>
+<tr><td class="num" id="LN42">42</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN43">43</td><td class="line">	bset = isl_basic_set_move_dims(bset, isl_dim_set, 0,</td></tr>
+<tr><td class="num" id="LN44">44</td><td class="line">					isl_dim_param, 0, nparam);</td></tr>
+<tr><td class="num" id="LN45">45</td><td class="line">	poly = isl_qpolynomial_move_dims(poly, isl_dim_in, 0,</td></tr>
+<tr><td class="num" id="LN46">46</td><td class="line">					isl_dim_param, 0, nparam);</td></tr>
+<tr><td class="num" id="LN47">47</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN48">48</td><td class="line">	dim = isl_qpolynomial_get_space(poly);</td></tr>
+<tr><td class="num" id="LN49">49</td><td class="line">	dim = isl_space_params(dim);</td></tr>
+<tr><td class="num" id="LN50">50</td><td class="line">	dim = isl_space_from_domain(dim);</td></tr>
+<tr><td class="num" id="LN51">51</td><td class="line">	dim = isl_space_add_dims(dim, isl_dim_out, 1);</td></tr>
+<tr><td class="num" id="LN52">52</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN53">53</td><td class="line">	data_m.test_monotonicity = 0;</td></tr>
+<tr><td class="num" id="LN54">54</td><td class="line">	data_m.signs = signs;</td></tr>
+<tr><td class="num" id="LN55">55</td><td class="line">	data_m.sign = -sign;</td></tr>
+<tr><td class="num" id="LN56">56</td><td class="line">	type = data_m.sign &lt; 0 ? isl_fold_min : isl_fold_max;</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path11" class="msg msgControl" style="margin-left:16ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexControl">11</div></td><td><div class="PathNav"><a href="#Path10" title="Previous event (10)">&#x2190;</a></div></td></td><td>'?' condition is true</td><td><div class="PathNav"><a href="#Path12" title="Next event (12)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN57">57</td><td class="line">	data_m.pwf = isl_pw_qpolynomial_fold_zero(dim, type);</td></tr>
+<tr><td class="num" id="LN58">58</td><td class="line">	data_m.tight = 0;</td></tr>
+<tr><td class="num" id="LN59">59</td><td class="line">	data_m.pwf_tight = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN60">60</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN61">61</td><td class="line">	<span class='keyword'>if</span> (<span class="mrange">propagate_on_domain(bset, poly, &amp;data_m)</span> &lt; 0)</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path12" class="msg msgEvent" style="margin-left:13ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexEvent">12</div></td><td><div class="PathNav"><a href="#Path11" title="Previous event (11)">&#x2190;</a></div></td></td><td>Calling 'propagate_on_domain'</td><td><div class="PathNav"><a href="#EndPath" title="Next event (13)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN62">62</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN63">63</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN64">64</td><td class="line">	<span class='keyword'>if</span> (sign &gt; 0)</td></tr>
+<tr><td class="num" id="LN65">65</td><td class="line">		opt = isl_pw_qpolynomial_fold_min(data_m.pwf);</td></tr>
+<tr><td class="num" id="LN66">66</td><td class="line">	<span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN67">67</td><td class="line">		opt = isl_pw_qpolynomial_fold_max(data_m.pwf);</td></tr>
+<tr><td class="num" id="LN68">68</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN69">69</td><td class="line">	<span class='keyword'>if</span> (!opt)</td></tr>
+<tr><td class="num" id="LN70">70</td><td class="line">		r = -1;</td></tr>
+<tr><td class="num" id="LN71">71</td><td class="line">	<span class='keyword'>else</span> <span class='keyword'>if</span> (isl_val_is_nan(opt) ||</td></tr>
+<tr><td class="num" id="LN72">72</td><td class="line">		 isl_val_is_infty(opt) ||</td></tr>
+<tr><td class="num" id="LN73">73</td><td class="line">		 isl_val_is_neginfty(opt))</td></tr>
+<tr><td class="num" id="LN74">74</td><td class="line">		r = 0;</td></tr>
+<tr><td class="num" id="LN75">75</td><td class="line">	<span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN76">76</td><td class="line">		r = sign * isl_val_sgn(opt) &gt;= 0;</td></tr>
+<tr><td class="num" id="LN77">77</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN78">78</td><td class="line">	isl_val_free(opt);</td></tr>
+<tr><td class="num" id="LN79">79</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN80">80</td><td class="line">	<span class='keyword'>return</span> r;</td></tr>
+<tr><td class="num" id="LN81">81</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN82">82</td><td class="line">	isl_pw_qpolynomial_fold_free(data_m.pwf);</td></tr>
+<tr><td class="num" id="LN83">83</td><td class="line">	<span class='keyword'>return</span> -1;</td></tr>
+<tr><td class="num" id="LN84">84</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN85">85</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN86">86</td><td class="line"><span class='comment'>/* Return  1 if poly is monotonically increasing in the last set variable,</span></td></tr>
+<tr><td class="num" id="LN87">87</td><td class="line"> <span class='comment'>*        -1 if poly is monotonically decreasing in the last set variable,</span></td></tr>
+<tr><td class="num" id="LN88">88</td><td class="line"> <span class='comment'>*	   0 if no conclusion,</span></td></tr>
+<tr><td class="num" id="LN89">89</td><td class="line"> <span class='comment'>*	  -2 on error.</span></td></tr>
+<tr><td class="num" id="LN90">90</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN91">91</td><td class="line"> <span class='comment'>* We simply check the sign of p(x+1)-p(x)</span></td></tr>
+<tr><td class="num" id="LN92">92</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN93">93</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>int</span> monotonicity(__isl_keep isl_basic_set *bset,</td></tr>
+<tr><td class="num" id="LN94">94</td><td class="line">	__isl_keep isl_qpolynomial *poly, <span class='keyword'>struct</span> range_data *data)</td></tr>
+<tr><td class="num" id="LN95">95</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN96">96</td><td class="line">	isl_ctx *ctx;</td></tr>
+<tr><td class="num" id="LN97">97</td><td class="line">	isl_space *dim;</td></tr>
+<tr><td class="num" id="LN98">98</td><td class="line">	isl_qpolynomial *sub = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN99">99</td><td class="line">	isl_qpolynomial *diff = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN100">100</td><td class="line">	<span class='keyword'>int</span> result = 0;</td></tr>
+<tr><td class="num" id="LN101">101</td><td class="line">	<span class='keyword'>int</span> s;</td></tr>
+<tr><td class="num" id="LN102">102</td><td class="line">	<span class='keyword'>unsigned</span> nvar;</td></tr>
+<tr><td class="num" id="LN103">103</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN104">104</td><td class="line">	ctx = isl_qpolynomial_get_ctx(poly);</td></tr>
+<tr><td class="num" id="LN105">105</td><td class="line">	dim = isl_qpolynomial_get_domain_space(poly);</td></tr>
+<tr><td class="num" id="LN106">106</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN107">107</td><td class="line">	nvar = isl_basic_set_dim(bset, isl_dim_set);</td></tr>
+<tr><td class="num" id="LN108">108</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN109">109</td><td class="line">	sub = isl_qpolynomial_var_on_domain(isl_space_copy(dim), isl_dim_set, nvar - 1);</td></tr>
+<tr><td class="num" id="LN110">110</td><td class="line">	sub = isl_qpolynomial_add(sub,</td></tr>
+<tr><td class="num" id="LN111">111</td><td class="line">		isl_qpolynomial_rat_cst_on_domain(dim, ctx-&gt;one, ctx-&gt;one));</td></tr>
+<tr><td class="num" id="LN112">112</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN113">113</td><td class="line">	diff = isl_qpolynomial_substitute(isl_qpolynomial_copy(poly),</td></tr>
+<tr><td class="num" id="LN114">114</td><td class="line">			isl_dim_in, nvar - 1, 1, &amp;sub);</td></tr>
+<tr><td class="num" id="LN115">115</td><td class="line">	diff = isl_qpolynomial_sub(diff, isl_qpolynomial_copy(poly));</td></tr>
+<tr><td class="num" id="LN116">116</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN117">117</td><td class="line">	s = <span class="mrange">has_sign(bset, diff, 1, data-&gt;signs)</span>;</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path10" class="msg msgEvent" style="margin-left:13ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexEvent">10</div></td><td><div class="PathNav"><a href="#Path9" title="Previous event (9)">&#x2190;</a></div></td></td><td>Calling 'has_sign'</td><td><div class="PathNav"><a href="#Path11" title="Next event (11)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN118">118</td><td class="line">	<span class='keyword'>if</span> (s &lt; 0)</td></tr>
+<tr><td class="num" id="LN119">119</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN120">120</td><td class="line">	<span class='keyword'>if</span> (s)</td></tr>
+<tr><td class="num" id="LN121">121</td><td class="line">		result = 1;</td></tr>
+<tr><td class="num" id="LN122">122</td><td class="line">	<span class='keyword'>else</span> {</td></tr>
+<tr><td class="num" id="LN123">123</td><td class="line">		s = has_sign(bset, diff, -1, data-&gt;signs);</td></tr>
+<tr><td class="num" id="LN124">124</td><td class="line">		<span class='keyword'>if</span> (s &lt; 0)</td></tr>
+<tr><td class="num" id="LN125">125</td><td class="line">			<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN126">126</td><td class="line">		<span class='keyword'>if</span> (s)</td></tr>
+<tr><td class="num" id="LN127">127</td><td class="line">			result = -1;</td></tr>
+<tr><td class="num" id="LN128">128</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN129">129</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN130">130</td><td class="line">	isl_qpolynomial_free(diff);</td></tr>
+<tr><td class="num" id="LN131">131</td><td class="line">	isl_qpolynomial_free(sub);</td></tr>
+<tr><td class="num" id="LN132">132</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN133">133</td><td class="line">	<span class='keyword'>return</span> result;</td></tr>
+<tr><td class="num" id="LN134">134</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN135">135</td><td class="line">	isl_qpolynomial_free(diff);</td></tr>
+<tr><td class="num" id="LN136">136</td><td class="line">	isl_qpolynomial_free(sub);</td></tr>
+<tr><td class="num" id="LN137">137</td><td class="line">	<span class='keyword'>return</span> -2;</td></tr>
+<tr><td class="num" id="LN138">138</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN139">139</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN140">140</td><td class="line"><span class='comment'>/* Return a positive ("sign" &gt; 0) or negative ("sign" &lt; 0) infinite polynomial</span></td></tr>
+<tr><td class="num" id="LN141">141</td><td class="line"> <span class='comment'>* with domain space "space".</span></td></tr>
+<tr><td class="num" id="LN142">142</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN143">143</td><td class="line"><span class='keyword'>static</span> <span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_qpolynomial *signed_infty(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_space *space,</td></tr>
+<tr><td class="num" id="LN144">144</td><td class="line">	<span class='keyword'>int</span> sign)</td></tr>
+<tr><td class="num" id="LN145">145</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN146">146</td><td class="line">	<span class='keyword'>if</span> (sign &gt; 0)</td></tr>
+<tr><td class="num" id="LN147">147</td><td class="line">		<span class='keyword'>return</span> isl_qpolynomial_infty_on_domain(space);</td></tr>
+<tr><td class="num" id="LN148">148</td><td class="line">	<span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN149">149</td><td class="line">		<span class='keyword'>return</span> isl_qpolynomial_neginfty_on_domain(space);</td></tr>
+<tr><td class="num" id="LN150">150</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN151">151</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN152">152</td><td class="line"><span class='keyword'>static</span> <span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_qpolynomial *bound2poly(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_constraint *bound,</td></tr>
+<tr><td class="num" id="LN153">153</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_space *space, <span class='keyword'>unsigned</span> pos, <span class='keyword'>int</span> sign)</td></tr>
+<tr><td class="num" id="LN154">154</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN155">155</td><td class="line">	<span class='keyword'>if</span> (!bound)</td></tr>
+<tr><td class="num" id="LN156">156</td><td class="line">		<span class='keyword'>return</span> signed_infty(space, sign);</td></tr>
+<tr><td class="num" id="LN157">157</td><td class="line">	isl_space_free(space);</td></tr>
+<tr><td class="num" id="LN158">158</td><td class="line">	<span class='keyword'>return</span> isl_qpolynomial_from_constraint(bound, isl_dim_set, pos);</td></tr>
+<tr><td class="num" id="LN159">159</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN160">160</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN161">161</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>int</span> bound_is_integer(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_constraint *bound, <span class='keyword'>unsigned</span> pos)</td></tr>
+<tr><td class="num" id="LN162">162</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN163">163</td><td class="line">	isl_int c;</td></tr>
+<tr><td class="num" id="LN164">164</td><td class="line">	<span class='keyword'>int</span> is_int;</td></tr>
+<tr><td class="num" id="LN165">165</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN166">166</td><td class="line">	<span class='keyword'>if</span> (!bound)</td></tr>
+<tr><td class="num" id="LN167">167</td><td class="line">		<span class='keyword'>return</span> 1;</td></tr>
+<tr><td class="num" id="LN168">168</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN169">169</td><td class="line">	<span class='macro'>isl_int_init(c)<span class='expansion'>isl_sioimath_init((c))</span></span>;</td></tr>
+<tr><td class="num" id="LN170">170</td><td class="line">	isl_constraint_get_coefficient(bound, isl_dim_set, pos, &amp;c);</td></tr>
+<tr><td class="num" id="LN171">171</td><td class="line">	is_int = <span class='macro'>isl_int_is_one(c)<span class='expansion'>(isl_sioimath_cmp_si(*(c), 1) == 0)</span></span> || <span class='macro'>isl_int_is_negone(c)<span class='expansion'>(isl_sioimath_cmp_si(*(c), -1) == 0)</span></span>;</td></tr>
+<tr><td class="num" id="LN172">172</td><td class="line">	<span class='macro'>isl_int_clear(c)<span class='expansion'>isl_sioimath_clear((c))</span></span>;</td></tr>
+<tr><td class="num" id="LN173">173</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN174">174</td><td class="line">	<span class='keyword'>return</span> is_int;</td></tr>
+<tr><td class="num" id="LN175">175</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN176">176</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN177">177</td><td class="line"><span class='keyword'>struct</span> isl_fixed_sign_data {</td></tr>
+<tr><td class="num" id="LN178">178</td><td class="line">	<span class='keyword'>int</span>		*signs;</td></tr>
+<tr><td class="num" id="LN179">179</td><td class="line">	<span class='keyword'>int</span>		sign;</td></tr>
+<tr><td class="num" id="LN180">180</td><td class="line">	isl_qpolynomial	*poly;</td></tr>
+<tr><td class="num" id="LN181">181</td><td class="line">};</td></tr>
+<tr><td class="num" id="LN182">182</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN183">183</td><td class="line"><span class='comment'>/* Add term "term" to data-&gt;poly if it has sign data-&gt;sign.</span></td></tr>
+<tr><td class="num" id="LN184">184</td><td class="line"> <span class='comment'>* The sign is determined based on the signs of the parameters</span></td></tr>
+<tr><td class="num" id="LN185">185</td><td class="line"> <span class='comment'>* and variables in data-&gt;signs.  The integer divisions, if</span></td></tr>
+<tr><td class="num" id="LN186">186</td><td class="line"> <span class='comment'>* any, are assumed to be non-negative.</span></td></tr>
+<tr><td class="num" id="LN187">187</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN188">188</td><td class="line"><span class='keyword'>static</span> isl_stat collect_fixed_sign_terms(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_term *term, <span class='keyword'>void</span> *user)</td></tr>
+<tr><td class="num" id="LN189">189</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN190">190</td><td class="line">	<span class='keyword'>struct</span> isl_fixed_sign_data *data = (<span class='keyword'>struct</span> isl_fixed_sign_data *)user;</td></tr>
+<tr><td class="num" id="LN191">191</td><td class="line">	isl_int n;</td></tr>
+<tr><td class="num" id="LN192">192</td><td class="line">	<span class='keyword'>int</span> i;</td></tr>
+<tr><td class="num" id="LN193">193</td><td class="line">	<span class='keyword'>int</span> sign;</td></tr>
+<tr><td class="num" id="LN194">194</td><td class="line">	<span class='keyword'>unsigned</span> nparam;</td></tr>
+<tr><td class="num" id="LN195">195</td><td class="line">	<span class='keyword'>unsigned</span> nvar;</td></tr>
+<tr><td class="num" id="LN196">196</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN197">197</td><td class="line">	<span class='keyword'>if</span> (!term)</td></tr>
+<tr><td class="num" id="LN198">198</td><td class="line">		<span class='keyword'>return</span> isl_stat_error;</td></tr>
+<tr><td class="num" id="LN199">199</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN200">200</td><td class="line">	nparam = isl_term_dim(term, isl_dim_param);</td></tr>
+<tr><td class="num" id="LN201">201</td><td class="line">	nvar = isl_term_dim(term, isl_dim_set);</td></tr>
+<tr><td class="num" id="LN202">202</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN203">203</td><td class="line">	<span class='macro'>isl_int_init(n)<span class='expansion'>isl_sioimath_init((n))</span></span>;</td></tr>
+<tr><td class="num" id="LN204">204</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN205">205</td><td class="line">	isl_term_get_num(term, &amp;n);</td></tr>
+<tr><td class="num" id="LN206">206</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN207">207</td><td class="line">	sign = <span class='macro'>isl_int_sgn(n)<span class='expansion'>isl_sioimath_sgn(*(n))</span></span>;</td></tr>
+<tr><td class="num" id="LN208">208</td><td class="line">	<span class='keyword'>for</span> (i = 0; i &lt; nparam; ++i) {</td></tr>
+<tr><td class="num" id="LN209">209</td><td class="line">		<span class='keyword'>if</span> (data-&gt;signs[i] &gt; 0)</td></tr>
+<tr><td class="num" id="LN210">210</td><td class="line">			<span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN211">211</td><td class="line">		<span class='keyword'>if</span> (isl_term_get_exp(term, isl_dim_param, i) % 2)</td></tr>
+<tr><td class="num" id="LN212">212</td><td class="line">			sign = -sign;</td></tr>
+<tr><td class="num" id="LN213">213</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN214">214</td><td class="line">	<span class='keyword'>for</span> (i = 0; i &lt; nvar; ++i) {</td></tr>
+<tr><td class="num" id="LN215">215</td><td class="line">		<span class='keyword'>if</span> (data-&gt;signs[nparam + i] &gt; 0)</td></tr>
+<tr><td class="num" id="LN216">216</td><td class="line">			<span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN217">217</td><td class="line">		<span class='keyword'>if</span> (isl_term_get_exp(term, isl_dim_set, i) % 2)</td></tr>
+<tr><td class="num" id="LN218">218</td><td class="line">			sign = -sign;</td></tr>
+<tr><td class="num" id="LN219">219</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN220">220</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN221">221</td><td class="line">	<span class='keyword'>if</span> (sign == data-&gt;sign) {</td></tr>
+<tr><td class="num" id="LN222">222</td><td class="line">		isl_qpolynomial *t = isl_qpolynomial_from_term(term);</td></tr>
+<tr><td class="num" id="LN223">223</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN224">224</td><td class="line">		data-&gt;poly = isl_qpolynomial_add(data-&gt;poly, t);</td></tr>
+<tr><td class="num" id="LN225">225</td><td class="line">	} <span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN226">226</td><td class="line">		isl_term_free(term);</td></tr>
+<tr><td class="num" id="LN227">227</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN228">228</td><td class="line">	<span class='macro'>isl_int_clear(n)<span class='expansion'>isl_sioimath_clear((n))</span></span>;</td></tr>
+<tr><td class="num" id="LN229">229</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN230">230</td><td class="line">	<span class='keyword'>return</span> isl_stat_ok;</td></tr>
+<tr><td class="num" id="LN231">231</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN232">232</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN233">233</td><td class="line"><span class='comment'>/* Construct and return a polynomial that consists of the terms</span></td></tr>
+<tr><td class="num" id="LN234">234</td><td class="line"> <span class='comment'>* in "poly" that have sign "sign".  The integer divisions, if</span></td></tr>
+<tr><td class="num" id="LN235">235</td><td class="line"> <span class='comment'>* any, are assumed to be non-negative.</span></td></tr>
+<tr><td class="num" id="LN236">236</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN237">237</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_qpolynomial *isl_qpolynomial_terms_of_sign(</td></tr>
+<tr><td class="num" id="LN238">238</td><td class="line">	__isl_keep isl_qpolynomial *poly, <span class='keyword'>int</span> *signs, <span class='keyword'>int</span> sign)</td></tr>
+<tr><td class="num" id="LN239">239</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN240">240</td><td class="line">	isl_space *space;</td></tr>
+<tr><td class="num" id="LN241">241</td><td class="line">	<span class='keyword'>struct</span> isl_fixed_sign_data data = { signs, sign };</td></tr>
+<tr><td class="num" id="LN242">242</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN243">243</td><td class="line">	space = isl_qpolynomial_get_domain_space(poly);</td></tr>
+<tr><td class="num" id="LN244">244</td><td class="line">	data.poly = isl_qpolynomial_zero_on_domain(space);</td></tr>
+<tr><td class="num" id="LN245">245</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN246">246</td><td class="line">	<span class='keyword'>if</span> (isl_qpolynomial_foreach_term(poly, collect_fixed_sign_terms, &amp;data) &lt; 0)</td></tr>
+<tr><td class="num" id="LN247">247</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN248">248</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN249">249</td><td class="line">	<span class='keyword'>return</span> data.poly;</td></tr>
+<tr><td class="num" id="LN250">250</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN251">251</td><td class="line">	isl_qpolynomial_free(data.poly);</td></tr>
+<tr><td class="num" id="LN252">252</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN253">253</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN254">254</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN255">255</td><td class="line"><span class='comment'>/* Helper function to add a guarded polynomial to either pwf_tight or pwf,</span></td></tr>
+<tr><td class="num" id="LN256">256</td><td class="line"> <span class='comment'>* depending on whether the result has been determined to be tight.</span></td></tr>
+<tr><td class="num" id="LN257">257</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN258">258</td><td class="line"><span class='keyword'>static</span> isl_stat add_guarded_poly(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_basic_set *bset,</td></tr>
+<tr><td class="num" id="LN259">259</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_qpolynomial *poly, <span class='keyword'>struct</span> range_data *data)</td></tr>
+<tr><td class="num" id="LN260">260</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN261">261</td><td class="line">	<span class='keyword'>enum</span> isl_fold type = data-&gt;sign &lt; 0 ? isl_fold_min : isl_fold_max;</td></tr>
+<tr><td class="num" id="LN262">262</td><td class="line">	isl_set *set;</td></tr>
+<tr><td class="num" id="LN263">263</td><td class="line">	isl_qpolynomial_fold *fold;</td></tr>
+<tr><td class="num" id="LN264">264</td><td class="line">	isl_pw_qpolynomial_fold *pwf;</td></tr>
+<tr><td class="num" id="LN265">265</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN266">266</td><td class="line">	bset = isl_basic_set_params(bset);</td></tr>
+<tr><td class="num" id="LN267">267</td><td class="line">	poly = isl_qpolynomial_project_domain_on_params(poly);</td></tr>
+<tr><td class="num" id="LN268">268</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN269">269</td><td class="line">	fold = isl_qpolynomial_fold_alloc(type, poly);</td></tr>
+<tr><td class="num" id="LN270">270</td><td class="line">	set = isl_set_from_basic_set(bset);</td></tr>
+<tr><td class="num" id="LN271">271</td><td class="line">	pwf = isl_pw_qpolynomial_fold_alloc(type, set, fold);</td></tr>
+<tr><td class="num" id="LN272">272</td><td class="line">	<span class='keyword'>if</span> (data-&gt;tight)</td></tr>
+<tr><td class="num" id="LN273">273</td><td class="line">		data-&gt;pwf_tight = isl_pw_qpolynomial_fold_fold(</td></tr>
+<tr><td class="num" id="LN274">274</td><td class="line">						data-&gt;pwf_tight, pwf);</td></tr>
+<tr><td class="num" id="LN275">275</td><td class="line">	<span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN276">276</td><td class="line">		data-&gt;pwf = isl_pw_qpolynomial_fold_fold(data-&gt;pwf, pwf);</td></tr>
+<tr><td class="num" id="LN277">277</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN278">278</td><td class="line">	<span class='keyword'>return</span> isl_stat_ok;</td></tr>
+<tr><td class="num" id="LN279">279</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN280">280</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN281">281</td><td class="line"><span class='comment'>/* Plug in "sub" for the variable at position "pos" in "poly".</span></td></tr>
+<tr><td class="num" id="LN282">282</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN283">283</td><td class="line"> <span class='comment'>* If "sub" is an infinite polynomial and if the variable actually</span></td></tr>
+<tr><td class="num" id="LN284">284</td><td class="line"> <span class='comment'>* appears in "poly", then calling isl_qpolynomial_substitute</span></td></tr>
+<tr><td class="num" id="LN285">285</td><td class="line"> <span class='comment'>* to perform the substitution may result in a NaN result.</span></td></tr>
+<tr><td class="num" id="LN286">286</td><td class="line"> <span class='comment'>* In such cases, return positive or negative infinity instead,</span></td></tr>
+<tr><td class="num" id="LN287">287</td><td class="line"> <span class='comment'>* depending on whether an upper bound or a lower bound is being computed,</span></td></tr>
+<tr><td class="num" id="LN288">288</td><td class="line"> <span class='comment'>* and mark the result as not being tight.</span></td></tr>
+<tr><td class="num" id="LN289">289</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN290">290</td><td class="line"><span class='keyword'>static</span> <span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_qpolynomial *plug_in_at_pos(</td></tr>
+<tr><td class="num" id="LN291">291</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_qpolynomial *poly, <span class='keyword'>int</span> pos,</td></tr>
+<tr><td class="num" id="LN292">292</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_qpolynomial *sub, <span class='keyword'>struct</span> range_data *data)</td></tr>
+<tr><td class="num" id="LN293">293</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN294">294</td><td class="line">	isl_bool involves, infty;</td></tr>
+<tr><td class="num" id="LN295">295</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN296">296</td><td class="line">	involves = isl_qpolynomial_involves_dims(poly, isl_dim_in, pos, 1);</td></tr>
+<tr><td class="num" id="LN297">297</td><td class="line">	<span class='keyword'>if</span> (involves &lt; 0)</td></tr>
+<tr><td class="num" id="LN298">298</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN299">299</td><td class="line">	<span class='keyword'>if</span> (!involves) {</td></tr>
+<tr><td class="num" id="LN300">300</td><td class="line">		isl_qpolynomial_free(sub);</td></tr>
+<tr><td class="num" id="LN301">301</td><td class="line">		<span class='keyword'>return</span> poly;</td></tr>
+<tr><td class="num" id="LN302">302</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN303">303</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN304">304</td><td class="line">	infty = isl_qpolynomial_is_infty(sub);</td></tr>
+<tr><td class="num" id="LN305">305</td><td class="line">	<span class='keyword'>if</span> (infty &gt;= 0 &amp;&amp; !infty)</td></tr>
+<tr><td class="num" id="LN306">306</td><td class="line">		infty = isl_qpolynomial_is_neginfty(sub);</td></tr>
+<tr><td class="num" id="LN307">307</td><td class="line">	<span class='keyword'>if</span> (infty &lt; 0)</td></tr>
+<tr><td class="num" id="LN308">308</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN309">309</td><td class="line">	<span class='keyword'>if</span> (infty) {</td></tr>
+<tr><td class="num" id="LN310">310</td><td class="line">		isl_space *space = isl_qpolynomial_get_domain_space(poly);</td></tr>
+<tr><td class="num" id="LN311">311</td><td class="line">		data-&gt;tight = 0;</td></tr>
+<tr><td class="num" id="LN312">312</td><td class="line">		isl_qpolynomial_free(poly);</td></tr>
+<tr><td class="num" id="LN313">313</td><td class="line">		isl_qpolynomial_free(sub);</td></tr>
+<tr><td class="num" id="LN314">314</td><td class="line">		<span class='keyword'>return</span> signed_infty(space, data-&gt;sign);</td></tr>
+<tr><td class="num" id="LN315">315</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN316">316</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN317">317</td><td class="line">	poly = isl_qpolynomial_substitute(poly, isl_dim_in, pos, 1, &amp;sub);</td></tr>
+<tr><td class="num" id="LN318">318</td><td class="line">	isl_qpolynomial_free(sub);</td></tr>
+<tr><td class="num" id="LN319">319</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN320">320</td><td class="line">	<span class='keyword'>return</span> poly;</td></tr>
+<tr><td class="num" id="LN321">321</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN322">322</td><td class="line">	isl_qpolynomial_free(poly);</td></tr>
+<tr><td class="num" id="LN323">323</td><td class="line">	isl_qpolynomial_free(sub);</td></tr>
+<tr><td class="num" id="LN324">324</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN325">325</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN326">326</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN327">327</td><td class="line"><span class='comment'>/* Given a lower and upper bound on the final variable and constraints</span></td></tr>
+<tr><td class="num" id="LN328">328</td><td class="line"> <span class='comment'>* on the remaining variables where these bounds are active,</span></td></tr>
+<tr><td class="num" id="LN329">329</td><td class="line"> <span class='comment'>* eliminate the variable from data-&gt;poly based on these bounds.</span></td></tr>
+<tr><td class="num" id="LN330">330</td><td class="line"> <span class='comment'>* If the polynomial has been determined to be monotonic</span></td></tr>
+<tr><td class="num" id="LN331">331</td><td class="line"> <span class='comment'>* in the variable, then simply plug in the appropriate bound.</span></td></tr>
+<tr><td class="num" id="LN332">332</td><td class="line"> <span class='comment'>* If the current polynomial is tight and if this bound is integer,</span></td></tr>
+<tr><td class="num" id="LN333">333</td><td class="line"> <span class='comment'>* then the result is still tight.  In all other cases, the results</span></td></tr>
+<tr><td class="num" id="LN334">334</td><td class="line"> <span class='comment'>* may not be tight.</span></td></tr>
+<tr><td class="num" id="LN335">335</td><td class="line"> <span class='comment'>* Otherwise, plug in the largest bound (in absolute value) in</span></td></tr>
+<tr><td class="num" id="LN336">336</td><td class="line"> <span class='comment'>* the positive terms (if an upper bound is wanted) or the negative terms</span></td></tr>
+<tr><td class="num" id="LN337">337</td><td class="line"> <span class='comment'>* (if a lower bounded is wanted) and the other bound in the other terms.</span></td></tr>
+<tr><td class="num" id="LN338">338</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN339">339</td><td class="line"> <span class='comment'>* If all variables have been eliminated, then record the result.</span></td></tr>
+<tr><td class="num" id="LN340">340</td><td class="line"> <span class='comment'>* Ohterwise, recurse on the next variable.</span></td></tr>
+<tr><td class="num" id="LN341">341</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN342">342</td><td class="line"><span class='keyword'>static</span> isl_stat propagate_on_bound_pair(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_constraint *lower,</td></tr>
+<tr><td class="num" id="LN343">343</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_constraint *upper, <span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_basic_set *bset,</td></tr>
+<tr><td class="num" id="LN344">344</td><td class="line">	<span class='keyword'>void</span> *user)</td></tr>
+<tr><td class="num" id="LN345">345</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN346">346</td><td class="line">	<span class='keyword'>struct</span> range_data *data = (<span class='keyword'>struct</span> range_data *)user;</td></tr>
+<tr><td class="num" id="LN347">347</td><td class="line">	<span class='keyword'>int</span> save_tight = data-&gt;tight;</td></tr>
+<tr><td class="num" id="LN348">348</td><td class="line">	isl_qpolynomial *poly;</td></tr>
+<tr><td class="num" id="LN349">349</td><td class="line">	isl_stat r;</td></tr>
+<tr><td class="num" id="LN350">350</td><td class="line">	<span class='keyword'>unsigned</span> nvar;</td></tr>
+<tr><td class="num" id="LN351">351</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN352">352</td><td class="line">	nvar = isl_basic_set_dim(bset, isl_dim_set);</td></tr>
+<tr><td class="num" id="LN353">353</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN354">354</td><td class="line">	<span class='keyword'>if</span> (data-&gt;monotonicity) {</td></tr>
+<tr><td class="num" id="LN355">355</td><td class="line">		isl_qpolynomial *sub;</td></tr>
+<tr><td class="num" id="LN356">356</td><td class="line">		isl_space *dim = isl_qpolynomial_get_domain_space(data-&gt;poly);</td></tr>
+<tr><td class="num" id="LN357">357</td><td class="line">		<span class='keyword'>if</span> (data-&gt;monotonicity * data-&gt;sign &gt; 0) {</td></tr>
+<tr><td class="num" id="LN358">358</td><td class="line">			<span class='keyword'>if</span> (data-&gt;tight)</td></tr>
+<tr><td class="num" id="LN359">359</td><td class="line">				data-&gt;tight = bound_is_integer(upper, nvar);</td></tr>
+<tr><td class="num" id="LN360">360</td><td class="line">			sub = bound2poly(upper, dim, nvar, 1);</td></tr>
+<tr><td class="num" id="LN361">361</td><td class="line">			isl_constraint_free(lower);</td></tr>
+<tr><td class="num" id="LN362">362</td><td class="line">		} <span class='keyword'>else</span> {</td></tr>
+<tr><td class="num" id="LN363">363</td><td class="line">			<span class='keyword'>if</span> (data-&gt;tight)</td></tr>
+<tr><td class="num" id="LN364">364</td><td class="line">				data-&gt;tight = bound_is_integer(lower, nvar);</td></tr>
+<tr><td class="num" id="LN365">365</td><td class="line">			sub = bound2poly(lower, dim, nvar, -1);</td></tr>
+<tr><td class="num" id="LN366">366</td><td class="line">			isl_constraint_free(upper);</td></tr>
+<tr><td class="num" id="LN367">367</td><td class="line">		}</td></tr>
+<tr><td class="num" id="LN368">368</td><td class="line">		poly = isl_qpolynomial_copy(data-&gt;poly);</td></tr>
+<tr><td class="num" id="LN369">369</td><td class="line">		poly = plug_in_at_pos(poly, nvar, sub, data);</td></tr>
+<tr><td class="num" id="LN370">370</td><td class="line">		poly = isl_qpolynomial_drop_dims(poly, isl_dim_in, nvar, 1);</td></tr>
+<tr><td class="num" id="LN371">371</td><td class="line">	} <span class='keyword'>else</span> {</td></tr>
+<tr><td class="num" id="LN372">372</td><td class="line">		isl_qpolynomial *l, *u;</td></tr>
+<tr><td class="num" id="LN373">373</td><td class="line">		isl_qpolynomial *pos, *neg;</td></tr>
+<tr><td class="num" id="LN374">374</td><td class="line">		isl_space *dim = isl_qpolynomial_get_domain_space(data-&gt;poly);</td></tr>
+<tr><td class="num" id="LN375">375</td><td class="line">		<span class='keyword'>unsigned</span> nparam = isl_basic_set_dim(bset, isl_dim_param);</td></tr>
+<tr><td class="num" id="LN376">376</td><td class="line">		<span class='keyword'>int</span> sign = data-&gt;sign * data-&gt;signs[nparam + nvar];</td></tr>
+<tr><td class="num" id="LN377">377</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN378">378</td><td class="line">		data-&gt;tight = 0;</td></tr>
+<tr><td class="num" id="LN379">379</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN380">380</td><td class="line">		u = bound2poly(upper, isl_space_copy(dim), nvar, 1);</td></tr>
+<tr><td class="num" id="LN381">381</td><td class="line">		l = bound2poly(lower, dim, nvar, -1);</td></tr>
+<tr><td class="num" id="LN382">382</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN383">383</td><td class="line">		pos = isl_qpolynomial_terms_of_sign(data-&gt;poly, data-&gt;signs, sign);</td></tr>
+<tr><td class="num" id="LN384">384</td><td class="line">		neg = isl_qpolynomial_terms_of_sign(data-&gt;poly, data-&gt;signs, -sign);</td></tr>
+<tr><td class="num" id="LN385">385</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN386">386</td><td class="line">		pos = plug_in_at_pos(pos, nvar, u, data);</td></tr>
+<tr><td class="num" id="LN387">387</td><td class="line">		neg = plug_in_at_pos(neg, nvar, l, data);</td></tr>
+<tr><td class="num" id="LN388">388</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN389">389</td><td class="line">		poly = isl_qpolynomial_add(pos, neg);</td></tr>
+<tr><td class="num" id="LN390">390</td><td class="line">		poly = isl_qpolynomial_drop_dims(poly, isl_dim_in, nvar, 1);</td></tr>
+<tr><td class="num" id="LN391">391</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN392">392</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN393">393</td><td class="line">	<span class='keyword'>if</span> (isl_basic_set_dim(bset, isl_dim_set) == 0)</td></tr>
+<tr><td class="num" id="LN394">394</td><td class="line">		r = add_guarded_poly(bset, poly, data);</td></tr>
+<tr><td class="num" id="LN395">395</td><td class="line">	<span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN396">396</td><td class="line">		r = propagate_on_domain(bset, poly, data);</td></tr>
+<tr><td class="num" id="LN397">397</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN398">398</td><td class="line">	data-&gt;tight = save_tight;</td></tr>
+<tr><td class="num" id="LN399">399</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN400">400</td><td class="line">	<span class='keyword'>return</span> r;</td></tr>
+<tr><td class="num" id="LN401">401</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN402">402</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN403">403</td><td class="line"><span class='comment'>/* Recursively perform range propagation on the polynomial "poly"</span></td></tr>
+<tr><td class="num" id="LN404">404</td><td class="line"> <span class='comment'>* defined over the basic set "bset" and collect the results in "data".</span></td></tr>
+<tr><td class="num" id="LN405">405</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN406">406</td><td class="line"><span class='keyword'>static</span> isl_stat propagate_on_domain(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_basic_set *bset,</td></tr>
+<tr><td class="num" id="LN407">407</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_qpolynomial *poly, <span class='keyword'>struct</span> range_data *data)</td></tr>
+<tr><td class="num" id="LN408">408</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN409">409</td><td class="line">	isl_ctx *ctx;</td></tr>
+<tr><td class="num" id="LN410">410</td><td class="line">	isl_qpolynomial *save_poly = <span class="mrange">data-&gt;poly</span>;</td></tr>
+<tr><td class="num"></td><td class="line"><div id="EndPath" class="msg msgEvent" style="margin-left:9ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexEvent">13</div></td><td><div class="PathNav"><a href="#Path12" title="Previous event (12)">&#x2190;</a></div></td></td><td>Assigned value is garbage or undefined</td></tr></table></div></td></tr>
+<tr><td class="num" id="LN411">411</td><td class="line">	<span class='keyword'>int</span> save_monotonicity = data-&gt;monotonicity;</td></tr>
+<tr><td class="num" id="LN412">412</td><td class="line">	<span class='keyword'>unsigned</span> d;</td></tr>
+<tr><td class="num" id="LN413">413</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN414">414</td><td class="line">	<span class='keyword'>if</span> (<span class="mrange">!bset</span> || <span class="mrange">!poly</span>)</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path4" class="msg msgEvent" style="margin-left:13ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexEvent">4</div></td><td><div class="PathNav"><a href="#Path3" title="Previous event (3)">&#x2190;</a></div></td></td><td>Assuming 'bset' is non-null</td><td><div class="PathNav"><a href="#Path5" title="Next event (5)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path5" class="msg msgEvent" style="margin-left:22ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexEvent">5</div></td><td><div class="PathNav"><a href="#Path4" title="Previous event (4)">&#x2190;</a></div></td></td><td>Assuming 'poly' is non-null</td><td><div class="PathNav"><a href="#Path6" title="Next event (6)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path6" class="msg msgControl" style="margin-left:9ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexControl">6</div></td><td><div class="PathNav"><a href="#Path5" title="Previous event (5)">&#x2190;</a></div></td></td><td>Taking false branch</td><td><div class="PathNav"><a href="#Path7" title="Next event (7)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN415">415</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN416">416</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN417">417</td><td class="line">	ctx = isl_basic_set_get_ctx(bset);</td></tr>
+<tr><td class="num" id="LN418">418</td><td class="line">	d = isl_basic_set_dim(bset, isl_dim_set);</td></tr>
+<tr><td class="num" id="LN419">419</td><td class="line">	<span class='macro'>isl_assert(ctx, d &gt;= 1, <span class='keyword'>goto</span> error)<span class='expansion'>do { if (d &gt;= 1) break; do { isl_handle_error(ctx, isl_error_unknown<br>, "Assertion \"" "d &gt;= 1" "\" failed", "/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_range.c"<br>, 419); goto error; } while (0); } while (0)</span></span>;</td></tr>
+<tr><td class="num" id="LN420">420</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN421">421</td><td class="line">	<span class='keyword'>if</span> (isl_qpolynomial_is_cst(poly, <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>, <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>)) {</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path7" class="msg msgControl" style="margin-left:9ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexControl">7</div></td><td><div class="PathNav"><a href="#Path6" title="Previous event (6)">&#x2190;</a></div></td></td><td>Taking false branch</td><td><div class="PathNav"><a href="#Path8" title="Next event (8)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN422">422</td><td class="line">		bset = isl_basic_set_project_out(bset, isl_dim_set, 0, d);</td></tr>
+<tr><td class="num" id="LN423">423</td><td class="line">		poly = isl_qpolynomial_drop_dims(poly, isl_dim_in, 0, d);</td></tr>
+<tr><td class="num" id="LN424">424</td><td class="line">		<span class='keyword'>return</span> add_guarded_poly(bset, poly, data);</td></tr>
+<tr><td class="num" id="LN425">425</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN426">426</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN427">427</td><td class="line">	<span class='keyword'>if</span> (data-&gt;test_monotonicity)</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path8" class="msg msgControl" style="margin-left:9ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexControl">8</div></td><td><div class="PathNav"><a href="#Path7" title="Previous event (7)">&#x2190;</a></div></td></td><td>Taking true branch</td><td><div class="PathNav"><a href="#Path9" title="Next event (9)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN428">428</td><td class="line">		data-&gt;monotonicity = <span class="mrange">monotonicity(bset, poly, data)</span>;</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path9" class="msg msgEvent" style="margin-left:38ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexEvent">9</div></td><td><div class="PathNav"><a href="#Path8" title="Previous event (8)">&#x2190;</a></div></td></td><td>Calling 'monotonicity'</td><td><div class="PathNav"><a href="#Path10" title="Next event (10)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN429">429</td><td class="line">	<span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN430">430</td><td class="line">		data-&gt;monotonicity = 0;</td></tr>
+<tr><td class="num" id="LN431">431</td><td class="line">	<span class='keyword'>if</span> (data-&gt;monotonicity &lt; -1)</td></tr>
+<tr><td class="num" id="LN432">432</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN433">433</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN434">434</td><td class="line">	data-&gt;poly = poly;</td></tr>
+<tr><td class="num" id="LN435">435</td><td class="line">	<span class='keyword'>if</span> (isl_basic_set_foreach_bound_pair(bset, isl_dim_set, d - 1,</td></tr>
+<tr><td class="num" id="LN436">436</td><td class="line">					    &amp;propagate_on_bound_pair, data) &lt; 0)</td></tr>
+<tr><td class="num" id="LN437">437</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN438">438</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN439">439</td><td class="line">	isl_basic_set_free(bset);</td></tr>
+<tr><td class="num" id="LN440">440</td><td class="line">	isl_qpolynomial_free(poly);</td></tr>
+<tr><td class="num" id="LN441">441</td><td class="line">	data-&gt;monotonicity = save_monotonicity;</td></tr>
+<tr><td class="num" id="LN442">442</td><td class="line">	data-&gt;poly = save_poly;</td></tr>
+<tr><td class="num" id="LN443">443</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN444">444</td><td class="line">	<span class='keyword'>return</span> isl_stat_ok;</td></tr>
+<tr><td class="num" id="LN445">445</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN446">446</td><td class="line">	isl_basic_set_free(bset);</td></tr>
+<tr><td class="num" id="LN447">447</td><td class="line">	isl_qpolynomial_free(poly);</td></tr>
+<tr><td class="num" id="LN448">448</td><td class="line">	data-&gt;monotonicity = save_monotonicity;</td></tr>
+<tr><td class="num" id="LN449">449</td><td class="line">	data-&gt;poly = save_poly;</td></tr>
+<tr><td class="num" id="LN450">450</td><td class="line">	<span class='keyword'>return</span> isl_stat_error;</td></tr>
+<tr><td class="num" id="LN451">451</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN452">452</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN453">453</td><td class="line"><span class='keyword'>static</span> isl_stat basic_guarded_poly_bound(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_basic_set *bset,</td></tr>
+<tr><td class="num" id="LN454">454</td><td class="line">	<span class='keyword'>void</span> *user)</td></tr>
+<tr><td class="num" id="LN455">455</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN456">456</td><td class="line">	<span class='keyword'>struct</span> range_data *data = (<span class='keyword'>struct</span> range_data *)user;</td></tr>
+<tr><td class="num" id="LN457">457</td><td class="line">	isl_ctx *ctx;</td></tr>
+<tr><td class="num" id="LN458">458</td><td class="line">	<span class='keyword'>unsigned</span> nparam = isl_basic_set_dim(bset, isl_dim_param);</td></tr>
+<tr><td class="num" id="LN459">459</td><td class="line">	<span class='keyword'>unsigned</span> dim = isl_basic_set_dim(bset, isl_dim_set);</td></tr>
+<tr><td class="num" id="LN460">460</td><td class="line">	isl_stat r;</td></tr>
+<tr><td class="num" id="LN461">461</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN462">462</td><td class="line">	data-&gt;signs = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN463">463</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN464">464</td><td class="line">	ctx = isl_basic_set_get_ctx(bset);</td></tr>
+<tr><td class="num" id="LN465">465</td><td class="line">	data-&gt;signs = <span class='macro'>isl_alloc_array(ctx, <span class='keyword'>int</span>,<span class='expansion'>((int *)isl_malloc_or_die(ctx, (isl_basic_set_dim(bset, isl_dim_all<br>))*sizeof(int)))</span></span></td></tr>
+<tr><td class="num" id="LN466">466</td><td class="line">					<span class='macro'>isl_basic_set_dim(bset, isl_dim_all))<span class='expansion'>((int *)isl_malloc_or_die(ctx, (isl_basic_set_dim(bset, isl_dim_all<br>))*sizeof(int)))</span></span>;</td></tr>
+<tr><td class="num" id="LN467">467</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN468">468</td><td class="line">	<span class='keyword'>if</span> (isl_basic_set_dims_get_sign(bset, isl_dim_set, 0, dim,</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path1" class="msg msgControl" style="margin-left:9ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexControl">1</div></td><td>Taking false branch</td><td><div class="PathNav"><a href="#Path2" title="Next event (2)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN469">469</td><td class="line">					data-&gt;signs + nparam) &lt; 0)</td></tr>
+<tr><td class="num" id="LN470">470</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN471">471</td><td class="line">	<span class='keyword'>if</span> (isl_basic_set_dims_get_sign(bset, isl_dim_param, 0, nparam,</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path2" class="msg msgControl" style="margin-left:9ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexControl">2</div></td><td><div class="PathNav"><a href="#Path1" title="Previous event (1)">&#x2190;</a></div></td></td><td>Taking false branch</td><td><div class="PathNav"><a href="#Path3" title="Next event (3)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN472">472</td><td class="line">					data-&gt;signs) &lt; 0)</td></tr>
+<tr><td class="num" id="LN473">473</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN474">474</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN475">475</td><td class="line">	r = <span class="mrange">propagate_on_domain(bset, isl_qpolynomial_copy(data-&gt;poly), data)</span>;</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path3" class="msg msgEvent" style="margin-left:13ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexEvent">3</div></td><td><div class="PathNav"><a href="#Path2" title="Previous event (2)">&#x2190;</a></div></td></td><td>Calling 'propagate_on_domain'</td><td><div class="PathNav"><a href="#Path4" title="Next event (4)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN476">476</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN477">477</td><td class="line">	free(data-&gt;signs);</td></tr>
+<tr><td class="num" id="LN478">478</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN479">479</td><td class="line">	<span class='keyword'>return</span> r;</td></tr>
+<tr><td class="num" id="LN480">480</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN481">481</td><td class="line">	free(data-&gt;signs);</td></tr>
+<tr><td class="num" id="LN482">482</td><td class="line">	isl_basic_set_free(bset);</td></tr>
+<tr><td class="num" id="LN483">483</td><td class="line">	<span class='keyword'>return</span> isl_stat_error;</td></tr>
+<tr><td class="num" id="LN484">484</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN485">485</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN486">486</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>int</span> qpolynomial_bound_on_domain_range(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_basic_set *bset,</td></tr>
+<tr><td class="num" id="LN487">487</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_qpolynomial *poly, <span class='keyword'>struct</span> range_data *data)</td></tr>
+<tr><td class="num" id="LN488">488</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN489">489</td><td class="line">	<span class='keyword'>unsigned</span> nparam = isl_basic_set_dim(bset, isl_dim_param);</td></tr>
+<tr><td class="num" id="LN490">490</td><td class="line">	<span class='keyword'>unsigned</span> nvar = isl_basic_set_dim(bset, isl_dim_set);</td></tr>
+<tr><td class="num" id="LN491">491</td><td class="line">	isl_set *set = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN492">492</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN493">493</td><td class="line">	<span class='keyword'>if</span> (!bset)</td></tr>
+<tr><td class="num" id="LN494">494</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN495">495</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN496">496</td><td class="line">	<span class='keyword'>if</span> (nvar == 0)</td></tr>
+<tr><td class="num" id="LN497">497</td><td class="line">		<span class='keyword'>return</span> add_guarded_poly(bset, poly, data);</td></tr>
+<tr><td class="num" id="LN498">498</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN499">499</td><td class="line">	set = isl_set_from_basic_set(bset);</td></tr>
+<tr><td class="num" id="LN500">500</td><td class="line">	set = isl_set_split_dims(set, isl_dim_param, 0, nparam);</td></tr>
+<tr><td class="num" id="LN501">501</td><td class="line">	set = isl_set_split_dims(set, isl_dim_set, 0, nvar);</td></tr>
+<tr><td class="num" id="LN502">502</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN503">503</td><td class="line">	data-&gt;poly = poly;</td></tr>
+<tr><td class="num" id="LN504">504</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN505">505</td><td class="line">	data-&gt;test_monotonicity = 1;</td></tr>
+<tr><td class="num" id="LN506">506</td><td class="line">	<span class='keyword'>if</span> (isl_set_foreach_basic_set(set, &amp;basic_guarded_poly_bound, data) &lt; 0)</td></tr>
+<tr><td class="num" id="LN507">507</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN508">508</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN509">509</td><td class="line">	isl_set_free(set);</td></tr>
+<tr><td class="num" id="LN510">510</td><td class="line">	isl_qpolynomial_free(poly);</td></tr>
+<tr><td class="num" id="LN511">511</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN512">512</td><td class="line">	<span class='keyword'>return</span> 0;</td></tr>
+<tr><td class="num" id="LN513">513</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN514">514</td><td class="line">	isl_set_free(set);</td></tr>
+<tr><td class="num" id="LN515">515</td><td class="line">	isl_qpolynomial_free(poly);</td></tr>
+<tr><td class="num" id="LN516">516</td><td class="line">	<span class='keyword'>return</span> -1;</td></tr>
+<tr><td class="num" id="LN517">517</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN518">518</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN519">519</td><td class="line"><span class='keyword'>int</span> isl_qpolynomial_bound_on_domain_range(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_basic_set *bset,</td></tr>
+<tr><td class="num" id="LN520">520</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_qpolynomial *poly, <span class='keyword'>struct</span> isl_bound *bound)</td></tr>
+<tr><td class="num" id="LN521">521</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN522">522</td><td class="line">	<span class='keyword'>struct</span> range_data data;</td></tr>
+<tr><td class="num" id="LN523">523</td><td class="line">	<span class='keyword'>int</span> r;</td></tr>
+<tr><td class="num" id="LN524">524</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN525">525</td><td class="line">	data.pwf = bound-&gt;pwf;</td></tr>
+<tr><td class="num" id="LN526">526</td><td class="line">	data.pwf_tight = bound-&gt;pwf_tight;</td></tr>
+<tr><td class="num" id="LN527">527</td><td class="line">	data.tight = bound-&gt;check_tight;</td></tr>
+<tr><td class="num" id="LN528">528</td><td class="line">	<span class='keyword'>if</span> (bound-&gt;type == isl_fold_min)</td></tr>
+<tr><td class="num" id="LN529">529</td><td class="line">		data.sign = -1;</td></tr>
+<tr><td class="num" id="LN530">530</td><td class="line">	<span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN531">531</td><td class="line">		data.sign = 1;</td></tr>
+<tr><td class="num" id="LN532">532</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN533">533</td><td class="line">	r = qpolynomial_bound_on_domain_range(bset, poly, &amp;data);</td></tr>
+<tr><td class="num" id="LN534">534</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN535">535</td><td class="line">	bound-&gt;pwf = data.pwf;</td></tr>
+<tr><td class="num" id="LN536">536</td><td class="line">	bound-&gt;pwf_tight = data.pwf_tight;</td></tr>
+<tr><td class="num" id="LN537">537</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN538">538</td><td class="line">	<span class='keyword'>return</span> r;</td></tr>
+<tr><td class="num" id="LN539">539</td><td class="line">}</td></tr>
+</table></body></html>

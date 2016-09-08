@@ -1,0 +1,1348 @@
+<!doctype html>
+<html>
+<head>
+<title>/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/CodeGen/IslNodeBuilder.cpp</title>
+<style type="text/css">
+ body { color:#000000; background-color:#ffffff }
+ body { font-family:Helvetica, sans-serif; font-size:10pt }
+ h1 { font-size:14pt }
+ .code { border-collapse:collapse; width:100%; }
+ .code { font-family: "Monospace", monospace; font-size:10pt }
+ .code { line-height: 1.2em }
+ .comment { color: green; font-style: oblique }
+ .keyword { color: blue }
+ .string_literal { color: red }
+ .directive { color: darkmagenta }
+ .expansion { display: none; }
+ .macro:hover .expansion { display: block; border: 2px solid #FF0000; padding: 2px; background-color:#FFF0F0; font-weight: normal;   -webkit-border-radius:5px;  -webkit-box-shadow:1px 1px 7px #000; position: absolute; top: -1em; left:10em; z-index: 1 } 
+ .macro { color: darkmagenta; background-color:LemonChiffon; position: relative }
+ .num { width:2.5em; padding-right:2ex; background-color:#eeeeee }
+ .num { text-align:right; font-size:8pt }
+ .num { color:#444444 }
+ .line { padding-left: 1ex; border-left: 3px solid #ccc }
+ .line { white-space: pre }
+ .msg { -webkit-box-shadow:1px 1px 7px #000 }
+ .msg { -webkit-border-radius:5px }
+ .msg { font-family:Helvetica, sans-serif; font-size:8pt }
+ .msg { float:left }
+ .msg { padding:0.25em 1ex 0.25em 1ex }
+ .msg { margin-top:10px; margin-bottom:10px }
+ .msg { font-weight:bold }
+ .msg { max-width:60em; word-wrap: break-word; white-space: pre-wrap }
+ .msgT { padding:0x; spacing:0x }
+ .msgEvent { background-color:#fff8b4; color:#000000 }
+ .msgControl { background-color:#bbbbbb; color:#000000 }
+ .mrange { background-color:#dfddf3 }
+ .mrange { border-bottom:1px solid #6F9DBE }
+ .PathIndex { font-weight: bold; padding:0px 5px; margin-right:5px; }
+ .PathIndex { -webkit-border-radius:8px }
+ .PathIndexEvent { background-color:#bfba87 }
+ .PathIndexControl { background-color:#8c8c8c }
+ .PathNav a { text-decoration:none; font-size: larger }
+ .CodeInsertionHint { font-weight: bold; background-color: #10dd10 }
+ .CodeRemovalHint { background-color:#de1010 }
+ .CodeRemovalHint { border-bottom:1px solid #6F9DBE }
+ table.simpletable {
+   padding: 5px;
+   font-size:12pt;
+   margin:20px;
+   border-collapse: collapse; border-spacing: 0px;
+ }
+ td.rowname {
+   text-align:right; font-weight:bold; color:#444444;
+   padding-right:2ex; }
+</style>
+</head>
+<body>
+<!-- BUGDESC Incorrect decrement of the reference count of an object that is not owned at this point by the caller -->
+
+<!-- BUGTYPE Bad release -->
+
+<!-- BUGCATEGORY Memory (Core Foundation/Objective-C) -->
+
+<!-- BUGFILE /cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/CodeGen/IslNodeBuilder.cpp -->
+
+<!-- FILENAME IslNodeBuilder.cpp -->
+
+<!-- FUNCTIONNAME countTotalDims -->
+
+<!-- ISSUEHASHCONTENTOFLINEINCONTEXT a93eca90ac6bf62769a2abb917c75066 -->
+
+<!-- BUGLINE 911 -->
+
+<!-- BUGCOLUMN 3 -->
+
+<!-- BUGPATHLENGTH 1 -->
+
+<!-- BUGMETAEND -->
+<!-- REPORTHEADER -->
+<h3>Bug Summary</h3>
+<table class="simpletable">
+<tr><td class="rowname">File:</td><td>CodeGen/IslNodeBuilder.cpp</td></tr>
+<tr><td class="rowname">Location:</td><td><a href="#EndPath">line 911, column 3</a></td></tr>
+<tr><td class="rowname">Description:</td><td>Incorrect decrement of the reference count of an object that is not owned at this point by the caller</td></tr>
+<tr><td></td><td>Code is compiled to use reference counts</td></tr>
+</table>
+<!-- REPORTSUMMARYEXTRA -->
+<h3>Annotated Source Code</h3>
+<table class="code">
+<tr><td class="num" id="LN1">1</td><td class="line"><span class='comment'>//===------ IslNodeBuilder.cpp - Translate an isl AST into a LLVM-IR AST---===//</span></td></tr>
+<tr><td class="num" id="LN2">2</td><td class="line"><span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN3">3</td><td class="line"><span class='comment'>//                     The LLVM Compiler Infrastructure</span></td></tr>
+<tr><td class="num" id="LN4">4</td><td class="line"><span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN5">5</td><td class="line"><span class='comment'>// This file is distributed under the University of Illinois Open Source</span></td></tr>
+<tr><td class="num" id="LN6">6</td><td class="line"><span class='comment'>// License. See LICENSE.TXT for details.</span></td></tr>
+<tr><td class="num" id="LN7">7</td><td class="line"><span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN8">8</td><td class="line"><span class='comment'>//===----------------------------------------------------------------------===//</span></td></tr>
+<tr><td class="num" id="LN9">9</td><td class="line"><span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN10">10</td><td class="line"><span class='comment'>// This file contains the IslNodeBuilder, a class to translate an isl AST into</span></td></tr>
+<tr><td class="num" id="LN11">11</td><td class="line"><span class='comment'>// a LLVM-IR AST.</span></td></tr>
+<tr><td class="num" id="LN12">12</td><td class="line"><span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN13">13</td><td class="line"><span class='comment'>//===----------------------------------------------------------------------===//</span></td></tr>
+<tr><td class="num" id="LN14">14</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN15">15</td><td class="line"><span class='directive'>#include "polly/CodeGen/IslNodeBuilder.h"</span></td></tr>
+<tr><td class="num" id="LN16">16</td><td class="line"><span class='directive'>#include "polly/CodeGen/BlockGenerators.h"</span></td></tr>
+<tr><td class="num" id="LN17">17</td><td class="line"><span class='directive'>#include "polly/CodeGen/CodeGeneration.h"</span></td></tr>
+<tr><td class="num" id="LN18">18</td><td class="line"><span class='directive'>#include "polly/CodeGen/IslAst.h"</span></td></tr>
+<tr><td class="num" id="LN19">19</td><td class="line"><span class='directive'>#include "polly/CodeGen/IslExprBuilder.h"</span></td></tr>
+<tr><td class="num" id="LN20">20</td><td class="line"><span class='directive'>#include "polly/CodeGen/LoopGenerators.h"</span></td></tr>
+<tr><td class="num" id="LN21">21</td><td class="line"><span class='directive'>#include "polly/CodeGen/Utils.h"</span></td></tr>
+<tr><td class="num" id="LN22">22</td><td class="line"><span class='directive'>#include "polly/Config/config.h"</span></td></tr>
+<tr><td class="num" id="LN23">23</td><td class="line"><span class='directive'>#include "polly/DependenceInfo.h"</span></td></tr>
+<tr><td class="num" id="LN24">24</td><td class="line"><span class='directive'>#include "polly/LinkAllPasses.h"</span></td></tr>
+<tr><td class="num" id="LN25">25</td><td class="line"><span class='directive'>#include "polly/ScopInfo.h"</span></td></tr>
+<tr><td class="num" id="LN26">26</td><td class="line"><span class='directive'>#include "polly/Support/GICHelper.h"</span></td></tr>
+<tr><td class="num" id="LN27">27</td><td class="line"><span class='directive'>#include "polly/Support/SCEVValidator.h"</span></td></tr>
+<tr><td class="num" id="LN28">28</td><td class="line"><span class='directive'>#include "polly/Support/ScopHelper.h"</span></td></tr>
+<tr><td class="num" id="LN29">29</td><td class="line"><span class='directive'>#include "llvm/ADT/PostOrderIterator.h"</span></td></tr>
+<tr><td class="num" id="LN30">30</td><td class="line"><span class='directive'>#include "llvm/ADT/SmallPtrSet.h"</span></td></tr>
+<tr><td class="num" id="LN31">31</td><td class="line"><span class='directive'>#include "llvm/Analysis/LoopInfo.h"</span></td></tr>
+<tr><td class="num" id="LN32">32</td><td class="line"><span class='directive'>#include "llvm/Analysis/PostDominators.h"</span></td></tr>
+<tr><td class="num" id="LN33">33</td><td class="line"><span class='directive'>#include "llvm/IR/DataLayout.h"</span></td></tr>
+<tr><td class="num" id="LN34">34</td><td class="line"><span class='directive'>#include "llvm/IR/Module.h"</span></td></tr>
+<tr><td class="num" id="LN35">35</td><td class="line"><span class='directive'>#include "llvm/IR/Verifier.h"</span></td></tr>
+<tr><td class="num" id="LN36">36</td><td class="line"><span class='directive'>#include "llvm/Support/CommandLine.h"</span></td></tr>
+<tr><td class="num" id="LN37">37</td><td class="line"><span class='directive'>#include "llvm/Support/Debug.h"</span></td></tr>
+<tr><td class="num" id="LN38">38</td><td class="line"><span class='directive'>#include "llvm/Transforms/Utils/BasicBlockUtils.h"</span></td></tr>
+<tr><td class="num" id="LN39">39</td><td class="line"><span class='directive'>#include "isl/aff.h"</span></td></tr>
+<tr><td class="num" id="LN40">40</td><td class="line"><span class='directive'>#include "isl/ast.h"</span></td></tr>
+<tr><td class="num" id="LN41">41</td><td class="line"><span class='directive'>#include "isl/ast_build.h"</span></td></tr>
+<tr><td class="num" id="LN42">42</td><td class="line"><span class='directive'>#include "isl/list.h"</span></td></tr>
+<tr><td class="num" id="LN43">43</td><td class="line"><span class='directive'>#include "isl/map.h"</span></td></tr>
+<tr><td class="num" id="LN44">44</td><td class="line"><span class='directive'>#include "isl/set.h"</span></td></tr>
+<tr><td class="num" id="LN45">45</td><td class="line"><span class='directive'>#include "isl/union_map.h"</span></td></tr>
+<tr><td class="num" id="LN46">46</td><td class="line"><span class='directive'>#include "isl/union_set.h"</span></td></tr>
+<tr><td class="num" id="LN47">47</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN48">48</td><td class="line"><span class='keyword'>using</span> <span class='keyword'>namespace</span> polly;</td></tr>
+<tr><td class="num" id="LN49">49</td><td class="line"><span class='keyword'>using</span> <span class='keyword'>namespace</span> llvm;</td></tr>
+<tr><td class="num" id="LN50">50</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN51">51</td><td class="line"><span class='comment'>// The maximal number of dimensions we allow during invariant load construction.</span></td></tr>
+<tr><td class="num" id="LN52">52</td><td class="line"><span class='comment'>// More complex access ranges will result in very high compile time and are also</span></td></tr>
+<tr><td class="num" id="LN53">53</td><td class="line"><span class='comment'>// unlikely to result in good code. This value is very high and should only</span></td></tr>
+<tr><td class="num" id="LN54">54</td><td class="line"><span class='comment'>// trigger for corner cases (e.g., the "dct_luma" function in h264, SPEC2006).</span></td></tr>
+<tr><td class="num" id="LN55">55</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>int</span> <span class='keyword'>const</span> MaxDimensionsInAccessRange = 9;</td></tr>
+<tr><td class="num" id="LN56">56</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN57">57</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_ast_expr *</td></tr>
+<tr><td class="num" id="LN58">58</td><td class="line">IslNodeBuilder::getUpperBound(__isl_keep isl_ast_node *For,</td></tr>
+<tr><td class="num" id="LN59">59</td><td class="line">                              ICmpInst::Predicate &amp;Predicate) {</td></tr>
+<tr><td class="num" id="LN60">60</td><td class="line">  isl_id *UBID, *IteratorID;</td></tr>
+<tr><td class="num" id="LN61">61</td><td class="line">  isl_ast_expr *Cond, *Iterator, *UB, *Arg0;</td></tr>
+<tr><td class="num" id="LN62">62</td><td class="line">  isl_ast_op_type Type;</td></tr>
+<tr><td class="num" id="LN63">63</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN64">64</td><td class="line">  Cond = isl_ast_node_for_get_cond(For);</td></tr>
+<tr><td class="num" id="LN65">65</td><td class="line">  Iterator = isl_ast_node_for_get_iterator(For);</td></tr>
+<tr><td class="num" id="LN66">66</td><td class="line">  isl_ast_expr_get_type(Cond);</td></tr>
+<tr><td class="num" id="LN67">67</td><td class="line">  <span class='macro'>assert(isl_ast_expr_get_type(Cond) == isl_ast_expr_op &amp;&amp;<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span></td></tr>
+<tr><td class="num" id="LN68">68</td><td class="line">         <span class='string_literal'><span class='macro'>"conditional expression is not an atomic upper bound"</span>)<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN69">69</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN70">70</td><td class="line">  Type = isl_ast_expr_get_op_type(Cond);</td></tr>
+<tr><td class="num" id="LN71">71</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN72">72</td><td class="line">  <span class='keyword'>switch</span> (Type) {</td></tr>
+<tr><td class="num" id="LN73">73</td><td class="line">  <span class='keyword'>case</span> isl_ast_op_le:</td></tr>
+<tr><td class="num" id="LN74">74</td><td class="line">    Predicate = ICmpInst::ICMP_SLE;</td></tr>
+<tr><td class="num" id="LN75">75</td><td class="line">    <span class='keyword'>break</span>;</td></tr>
+<tr><td class="num" id="LN76">76</td><td class="line">  <span class='keyword'>case</span> isl_ast_op_lt:</td></tr>
+<tr><td class="num" id="LN77">77</td><td class="line">    Predicate = ICmpInst::ICMP_SLT;</td></tr>
+<tr><td class="num" id="LN78">78</td><td class="line">    <span class='keyword'>break</span>;</td></tr>
+<tr><td class="num" id="LN79">79</td><td class="line">  <span class='keyword'>default</span>:</td></tr>
+<tr><td class="num" id="LN80">80</td><td class="line">    <span class='macro'>llvm_unreachable(<span class='string_literal'>"Unexpected comparision type in loop conditon"</span>)<span class='expansion'>__builtin_unreachable()</span></span>;</td></tr>
+<tr><td class="num" id="LN81">81</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN82">82</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN83">83</td><td class="line">  Arg0 = isl_ast_expr_get_op_arg(Cond, 0);</td></tr>
+<tr><td class="num" id="LN84">84</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN85">85</td><td class="line">  <span class='macro'>assert(isl_ast_expr_get_type(Arg0) == isl_ast_expr_id &amp;&amp;<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span></td></tr>
+<tr><td class="num" id="LN86">86</td><td class="line">         <span class='string_literal'><span class='macro'>"conditional expression is not an atomic upper bound"</span>)<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN87">87</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN88">88</td><td class="line">  UBID = isl_ast_expr_get_id(Arg0);</td></tr>
+<tr><td class="num" id="LN89">89</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN90">90</td><td class="line">  <span class='macro'>assert(isl_ast_expr_get_type(Iterator) == isl_ast_expr_id &amp;&amp;<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span></td></tr>
+<tr><td class="num" id="LN91">91</td><td class="line">         <span class='string_literal'><span class='macro'>"Could not get the iterator"</span>)<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN92">92</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN93">93</td><td class="line">  IteratorID = isl_ast_expr_get_id(Iterator);</td></tr>
+<tr><td class="num" id="LN94">94</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN95">95</td><td class="line">  <span class='macro'>assert(UBID == IteratorID &amp;&amp;<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span></td></tr>
+<tr><td class="num" id="LN96">96</td><td class="line">         <span class='string_literal'><span class='macro'>"conditional expression is not an atomic upper bound"</span>)<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN97">97</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN98">98</td><td class="line">  UB = isl_ast_expr_get_op_arg(Cond, 1);</td></tr>
+<tr><td class="num" id="LN99">99</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN100">100</td><td class="line">  isl_ast_expr_free(Cond);</td></tr>
+<tr><td class="num" id="LN101">101</td><td class="line">  isl_ast_expr_free(Iterator);</td></tr>
+<tr><td class="num" id="LN102">102</td><td class="line">  isl_ast_expr_free(Arg0);</td></tr>
+<tr><td class="num" id="LN103">103</td><td class="line">  isl_id_free(IteratorID);</td></tr>
+<tr><td class="num" id="LN104">104</td><td class="line">  isl_id_free(UBID);</td></tr>
+<tr><td class="num" id="LN105">105</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN106">106</td><td class="line">  <span class='keyword'>return</span> UB;</td></tr>
+<tr><td class="num" id="LN107">107</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN108">108</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN109">109</td><td class="line"><span class='comment'>/// Return true if a return value of Predicate is true for the value represented</span></td></tr>
+<tr><td class="num" id="LN110">110</td><td class="line"><span class='comment'>/// by passed isl_ast_expr_int.</span></td></tr>
+<tr><td class="num" id="LN111">111</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>bool</span> checkIslAstExprInt(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_ast_expr *Expr,</td></tr>
+<tr><td class="num" id="LN112">112</td><td class="line">                               isl_bool (*Predicate)(__isl_keep isl_val *)) {</td></tr>
+<tr><td class="num" id="LN113">113</td><td class="line">  <span class='keyword'>if</span> (isl_ast_expr_get_type(Expr) != isl_ast_expr_int) {</td></tr>
+<tr><td class="num" id="LN114">114</td><td class="line">    isl_ast_expr_free(Expr);</td></tr>
+<tr><td class="num" id="LN115">115</td><td class="line">    <span class='keyword'>return</span> <span class='keyword'>false</span>;</td></tr>
+<tr><td class="num" id="LN116">116</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN117">117</td><td class="line">  <span class='keyword'>auto</span> ExprVal = isl_ast_expr_get_val(Expr);</td></tr>
+<tr><td class="num" id="LN118">118</td><td class="line">  isl_ast_expr_free(Expr);</td></tr>
+<tr><td class="num" id="LN119">119</td><td class="line">  <span class='keyword'>if</span> (Predicate(ExprVal) != <span class='keyword'>true</span>) {</td></tr>
+<tr><td class="num" id="LN120">120</td><td class="line">    isl_val_free(ExprVal);</td></tr>
+<tr><td class="num" id="LN121">121</td><td class="line">    <span class='keyword'>return</span> <span class='keyword'>false</span>;</td></tr>
+<tr><td class="num" id="LN122">122</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN123">123</td><td class="line">  isl_val_free(ExprVal);</td></tr>
+<tr><td class="num" id="LN124">124</td><td class="line">  <span class='keyword'>return</span> <span class='keyword'>true</span>;</td></tr>
+<tr><td class="num" id="LN125">125</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN126">126</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN127">127</td><td class="line"><span class='keyword'>int</span> IslNodeBuilder::getNumberOfIterations(__isl_keep isl_ast_node *For) {</td></tr>
+<tr><td class="num" id="LN128">128</td><td class="line">  <span class='macro'>assert(isl_ast_node_get_type(For) == isl_ast_node_for)<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN129">129</td><td class="line">  <span class='keyword'>auto</span> Body = isl_ast_node_for_get_body(For);</td></tr>
+<tr><td class="num" id="LN130">130</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN131">131</td><td class="line">  <span class='comment'>// First, check if we can actually handle this code.</span></td></tr>
+<tr><td class="num" id="LN132">132</td><td class="line">  <span class='keyword'>switch</span> (isl_ast_node_get_type(Body)) {</td></tr>
+<tr><td class="num" id="LN133">133</td><td class="line">  <span class='keyword'>case</span> isl_ast_node_user:</td></tr>
+<tr><td class="num" id="LN134">134</td><td class="line">    <span class='keyword'>break</span>;</td></tr>
+<tr><td class="num" id="LN135">135</td><td class="line">  <span class='keyword'>case</span> isl_ast_node_block: {</td></tr>
+<tr><td class="num" id="LN136">136</td><td class="line">    isl_ast_node_list *List = isl_ast_node_block_get_children(Body);</td></tr>
+<tr><td class="num" id="LN137">137</td><td class="line">    <span class='keyword'>for</span> (<span class='keyword'>int</span> i = 0; i &lt; isl_ast_node_list_n_ast_node(List); ++i) {</td></tr>
+<tr><td class="num" id="LN138">138</td><td class="line">      isl_ast_node *Node = isl_ast_node_list_get_ast_node(List, i);</td></tr>
+<tr><td class="num" id="LN139">139</td><td class="line">      <span class='keyword'>int</span> Type = isl_ast_node_get_type(Node);</td></tr>
+<tr><td class="num" id="LN140">140</td><td class="line">      isl_ast_node_free(Node);</td></tr>
+<tr><td class="num" id="LN141">141</td><td class="line">      <span class='keyword'>if</span> (Type != isl_ast_node_user) {</td></tr>
+<tr><td class="num" id="LN142">142</td><td class="line">        isl_ast_node_list_free(List);</td></tr>
+<tr><td class="num" id="LN143">143</td><td class="line">        isl_ast_node_free(Body);</td></tr>
+<tr><td class="num" id="LN144">144</td><td class="line">        <span class='keyword'>return</span> -1;</td></tr>
+<tr><td class="num" id="LN145">145</td><td class="line">      }</td></tr>
+<tr><td class="num" id="LN146">146</td><td class="line">    }</td></tr>
+<tr><td class="num" id="LN147">147</td><td class="line">    isl_ast_node_list_free(List);</td></tr>
+<tr><td class="num" id="LN148">148</td><td class="line">    <span class='keyword'>break</span>;</td></tr>
+<tr><td class="num" id="LN149">149</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN150">150</td><td class="line">  <span class='keyword'>default</span>:</td></tr>
+<tr><td class="num" id="LN151">151</td><td class="line">    isl_ast_node_free(Body);</td></tr>
+<tr><td class="num" id="LN152">152</td><td class="line">    <span class='keyword'>return</span> -1;</td></tr>
+<tr><td class="num" id="LN153">153</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN154">154</td><td class="line">  isl_ast_node_free(Body);</td></tr>
+<tr><td class="num" id="LN155">155</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN156">156</td><td class="line">  <span class='keyword'>auto</span> Init = isl_ast_node_for_get_init(For);</td></tr>
+<tr><td class="num" id="LN157">157</td><td class="line">  <span class='keyword'>if</span> (!checkIslAstExprInt(Init, isl_val_is_zero))</td></tr>
+<tr><td class="num" id="LN158">158</td><td class="line">    <span class='keyword'>return</span> -1;</td></tr>
+<tr><td class="num" id="LN159">159</td><td class="line">  <span class='keyword'>auto</span> Inc = isl_ast_node_for_get_inc(For);</td></tr>
+<tr><td class="num" id="LN160">160</td><td class="line">  <span class='keyword'>if</span> (!checkIslAstExprInt(Inc, isl_val_is_one))</td></tr>
+<tr><td class="num" id="LN161">161</td><td class="line">    <span class='keyword'>return</span> -1;</td></tr>
+<tr><td class="num" id="LN162">162</td><td class="line">  CmpInst::Predicate Predicate;</td></tr>
+<tr><td class="num" id="LN163">163</td><td class="line">  <span class='keyword'>auto</span> UB = getUpperBound(For, Predicate);</td></tr>
+<tr><td class="num" id="LN164">164</td><td class="line">  <span class='keyword'>if</span> (isl_ast_expr_get_type(UB) != isl_ast_expr_int) {</td></tr>
+<tr><td class="num" id="LN165">165</td><td class="line">    isl_ast_expr_free(UB);</td></tr>
+<tr><td class="num" id="LN166">166</td><td class="line">    <span class='keyword'>return</span> -1;</td></tr>
+<tr><td class="num" id="LN167">167</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN168">168</td><td class="line">  <span class='keyword'>auto</span> UpVal = isl_ast_expr_get_val(UB);</td></tr>
+<tr><td class="num" id="LN169">169</td><td class="line">  isl_ast_expr_free(UB);</td></tr>
+<tr><td class="num" id="LN170">170</td><td class="line">  <span class='keyword'>int</span> NumberIterations = isl_val_get_num_si(UpVal);</td></tr>
+<tr><td class="num" id="LN171">171</td><td class="line">  isl_val_free(UpVal);</td></tr>
+<tr><td class="num" id="LN172">172</td><td class="line">  <span class='keyword'>if</span> (NumberIterations &lt; 0)</td></tr>
+<tr><td class="num" id="LN173">173</td><td class="line">    <span class='keyword'>return</span> -1;</td></tr>
+<tr><td class="num" id="LN174">174</td><td class="line">  <span class='keyword'>if</span> (Predicate == CmpInst::ICMP_SLT)</td></tr>
+<tr><td class="num" id="LN175">175</td><td class="line">    <span class='keyword'>return</span> NumberIterations;</td></tr>
+<tr><td class="num" id="LN176">176</td><td class="line">  <span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN177">177</td><td class="line">    <span class='keyword'>return</span> NumberIterations + 1;</td></tr>
+<tr><td class="num" id="LN178">178</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN179">179</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN180">180</td><td class="line"><span class='comment'>/// Extract the values and SCEVs needed to generate code for a block.</span></td></tr>
+<tr><td class="num" id="LN181">181</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>int</span> findReferencesInBlock(<span class='keyword'>struct</span> SubtreeReferences &amp;References,</td></tr>
+<tr><td class="num" id="LN182">182</td><td class="line">                                 <span class='keyword'>const</span> ScopStmt *Stmt, <span class='keyword'>const</span> BasicBlock *BB) {</td></tr>
+<tr><td class="num" id="LN183">183</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>const</span> Instruction &amp;Inst : *BB)</td></tr>
+<tr><td class="num" id="LN184">184</td><td class="line">    <span class='keyword'>for</span> (Value *SrcVal : Inst.operands()) {</td></tr>
+<tr><td class="num" id="LN185">185</td><td class="line">      <span class='keyword'>auto</span> *Scope = References.LI.getLoopFor(BB);</td></tr>
+<tr><td class="num" id="LN186">186</td><td class="line">      <span class='keyword'>if</span> (canSynthesize(SrcVal, References.S, &amp;References.LI, &amp;References.SE,</td></tr>
+<tr><td class="num" id="LN187">187</td><td class="line">                        Scope)) {</td></tr>
+<tr><td class="num" id="LN188">188</td><td class="line">        References.SCEVs.insert(References.SE.getSCEVAtScope(SrcVal, Scope));</td></tr>
+<tr><td class="num" id="LN189">189</td><td class="line">        <span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN190">190</td><td class="line">      } <span class='keyword'>else</span> <span class='keyword'>if</span> (Value *NewVal = References.GlobalMap.lookup(SrcVal))</td></tr>
+<tr><td class="num" id="LN191">191</td><td class="line">        References.Values.insert(NewVal);</td></tr>
+<tr><td class="num" id="LN192">192</td><td class="line">    }</td></tr>
+<tr><td class="num" id="LN193">193</td><td class="line">  <span class='keyword'>return</span> 0;</td></tr>
+<tr><td class="num" id="LN194">194</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN195">195</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN196">196</td><td class="line">isl_stat addReferencesFromStmt(<span class='keyword'>const</span> ScopStmt *Stmt, <span class='keyword'>void</span> *UserPtr,</td></tr>
+<tr><td class="num" id="LN197">197</td><td class="line">                               <span class='keyword'>bool</span> CreateScalarRefs) {</td></tr>
+<tr><td class="num" id="LN198">198</td><td class="line">  <span class='keyword'>auto</span> &amp;References = *<span class='keyword'>static_cast</span>&lt;<span class='keyword'>struct</span> SubtreeReferences *&gt;(UserPtr);</td></tr>
+<tr><td class="num" id="LN199">199</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN200">200</td><td class="line">  <span class='keyword'>if</span> (Stmt-&gt;isBlockStmt())</td></tr>
+<tr><td class="num" id="LN201">201</td><td class="line">    findReferencesInBlock(References, Stmt, Stmt-&gt;getBasicBlock());</td></tr>
+<tr><td class="num" id="LN202">202</td><td class="line">  <span class='keyword'>else</span> {</td></tr>
+<tr><td class="num" id="LN203">203</td><td class="line">    <span class='macro'>assert(Stmt-&gt;isRegionStmt() &amp;&amp;<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span></td></tr>
+<tr><td class="num" id="LN204">204</td><td class="line">           <span class='string_literal'><span class='macro'>"Stmt was neither block nor region statement"</span>)<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN205">205</td><td class="line">    <span class='keyword'>for</span> (<span class='keyword'>const</span> BasicBlock *BB : Stmt-&gt;getRegion()-&gt;blocks())</td></tr>
+<tr><td class="num" id="LN206">206</td><td class="line">      findReferencesInBlock(References, Stmt, BB);</td></tr>
+<tr><td class="num" id="LN207">207</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN208">208</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN209">209</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>auto</span> &amp;Access : *Stmt) {</td></tr>
+<tr><td class="num" id="LN210">210</td><td class="line">    <span class='keyword'>if</span> (Access-&gt;isArrayKind()) {</td></tr>
+<tr><td class="num" id="LN211">211</td><td class="line">      <span class='keyword'>auto</span> *BasePtr = Access-&gt;getScopArrayInfo()-&gt;getBasePtr();</td></tr>
+<tr><td class="num" id="LN212">212</td><td class="line">      <span class='keyword'>if</span> (Instruction *OpInst = dyn_cast&lt;Instruction&gt;(BasePtr))</td></tr>
+<tr><td class="num" id="LN213">213</td><td class="line">        <span class='keyword'>if</span> (Stmt-&gt;getParent()-&gt;contains(OpInst))</td></tr>
+<tr><td class="num" id="LN214">214</td><td class="line">          <span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN215">215</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN216">216</td><td class="line">      References.Values.insert(BasePtr);</td></tr>
+<tr><td class="num" id="LN217">217</td><td class="line">      <span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN218">218</td><td class="line">    }</td></tr>
+<tr><td class="num" id="LN219">219</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN220">220</td><td class="line">    <span class='keyword'>if</span> (CreateScalarRefs)</td></tr>
+<tr><td class="num" id="LN221">221</td><td class="line">      References.Values.insert(References.BlockGen.getOrCreateAlloca(*Access));</td></tr>
+<tr><td class="num" id="LN222">222</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN223">223</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN224">224</td><td class="line">  <span class='keyword'>return</span> isl_stat_ok;</td></tr>
+<tr><td class="num" id="LN225">225</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN226">226</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN227">227</td><td class="line"><span class='comment'>/// Extract the out-of-scop values and SCEVs referenced from a set describing</span></td></tr>
+<tr><td class="num" id="LN228">228</td><td class="line"><span class='comment'>/// a ScopStmt.</span></td></tr>
+<tr><td class="num" id="LN229">229</td><td class="line"><span class='comment'>///</span></td></tr>
+<tr><td class="num" id="LN230">230</td><td class="line"><span class='comment'>/// This includes the SCEVUnknowns referenced by the SCEVs used in the</span></td></tr>
+<tr><td class="num" id="LN231">231</td><td class="line"><span class='comment'>/// statement and the base pointers of the memory accesses. For scalar</span></td></tr>
+<tr><td class="num" id="LN232">232</td><td class="line"><span class='comment'>/// statements we force the generation of alloca memory locations and list</span></td></tr>
+<tr><td class="num" id="LN233">233</td><td class="line"><span class='comment'>/// these locations in the set of out-of-scop values as well.</span></td></tr>
+<tr><td class="num" id="LN234">234</td><td class="line"><span class='comment'>///</span></td></tr>
+<tr><td class="num" id="LN235">235</td><td class="line"><span class='comment'>/// @param Set     A set which references the ScopStmt we are interested in.</span></td></tr>
+<tr><td class="num" id="LN236">236</td><td class="line"><span class='comment'>/// @param UserPtr A void pointer that can be casted to a SubtreeReferences</span></td></tr>
+<tr><td class="num" id="LN237">237</td><td class="line"><span class='comment'>///                structure.</span></td></tr>
+<tr><td class="num" id="LN238">238</td><td class="line"><span class='keyword'>static</span> isl_stat addReferencesFromStmtSet(isl_set *Set, <span class='keyword'>void</span> *UserPtr) {</td></tr>
+<tr><td class="num" id="LN239">239</td><td class="line">  isl_id *Id = isl_set_get_tuple_id(Set);</td></tr>
+<tr><td class="num" id="LN240">240</td><td class="line">  <span class='keyword'>auto</span> *Stmt = <span class='keyword'>static_cast</span>&lt;<span class='keyword'>const</span> ScopStmt *&gt;(isl_id_get_user(Id));</td></tr>
+<tr><td class="num" id="LN241">241</td><td class="line">  isl_id_free(Id);</td></tr>
+<tr><td class="num" id="LN242">242</td><td class="line">  isl_set_free(Set);</td></tr>
+<tr><td class="num" id="LN243">243</td><td class="line">  <span class='keyword'>return</span> addReferencesFromStmt(Stmt, UserPtr);</td></tr>
+<tr><td class="num" id="LN244">244</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN245">245</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN246">246</td><td class="line"><span class='comment'>/// Extract the out-of-scop values and SCEVs referenced from a union set</span></td></tr>
+<tr><td class="num" id="LN247">247</td><td class="line"><span class='comment'>/// referencing multiple ScopStmts.</span></td></tr>
+<tr><td class="num" id="LN248">248</td><td class="line"><span class='comment'>///</span></td></tr>
+<tr><td class="num" id="LN249">249</td><td class="line"><span class='comment'>/// This includes the SCEVUnknowns referenced by the SCEVs used in the</span></td></tr>
+<tr><td class="num" id="LN250">250</td><td class="line"><span class='comment'>/// statement and the base pointers of the memory accesses. For scalar</span></td></tr>
+<tr><td class="num" id="LN251">251</td><td class="line"><span class='comment'>/// statements we force the generation of alloca memory locations and list</span></td></tr>
+<tr><td class="num" id="LN252">252</td><td class="line"><span class='comment'>/// these locations in the set of out-of-scop values as well.</span></td></tr>
+<tr><td class="num" id="LN253">253</td><td class="line"><span class='comment'>///</span></td></tr>
+<tr><td class="num" id="LN254">254</td><td class="line"><span class='comment'>/// @param USet       A union set referencing the ScopStmts we are interested</span></td></tr>
+<tr><td class="num" id="LN255">255</td><td class="line"><span class='comment'>///                   in.</span></td></tr>
+<tr><td class="num" id="LN256">256</td><td class="line"><span class='comment'>/// @param References The SubtreeReferences data structure through which</span></td></tr>
+<tr><td class="num" id="LN257">257</td><td class="line"><span class='comment'>///                   results are returned and further information is</span></td></tr>
+<tr><td class="num" id="LN258">258</td><td class="line"><span class='comment'>///                   provided.</span></td></tr>
+<tr><td class="num" id="LN259">259</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>void</span></td></tr>
+<tr><td class="num" id="LN260">260</td><td class="line">addReferencesFromStmtUnionSet(isl_union_set *USet,</td></tr>
+<tr><td class="num" id="LN261">261</td><td class="line">                              <span class='keyword'>struct</span> SubtreeReferences &amp;References) {</td></tr>
+<tr><td class="num" id="LN262">262</td><td class="line">  isl_union_set_foreach_set(USet, addReferencesFromStmtSet, &amp;References);</td></tr>
+<tr><td class="num" id="LN263">263</td><td class="line">  isl_union_set_free(USet);</td></tr>
+<tr><td class="num" id="LN264">264</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN265">265</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN266">266</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_union_map *</td></tr>
+<tr><td class="num" id="LN267">267</td><td class="line">IslNodeBuilder::getScheduleForAstNode(__isl_keep isl_ast_node *For) {</td></tr>
+<tr><td class="num" id="LN268">268</td><td class="line">  <span class='keyword'>return</span> IslAstInfo::getSchedule(For);</td></tr>
+<tr><td class="num" id="LN269">269</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN270">270</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN271">271</td><td class="line"><span class='keyword'>void</span> IslNodeBuilder::getReferencesInSubtree(__isl_keep isl_ast_node *For,</td></tr>
+<tr><td class="num" id="LN272">272</td><td class="line">                                            SetVector&lt;Value *&gt; &amp;Values,</td></tr>
+<tr><td class="num" id="LN273">273</td><td class="line">                                            SetVector&lt;<span class='keyword'>const</span> Loop *&gt; &amp;Loops) {</td></tr>
+<tr><td class="num" id="LN274">274</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN275">275</td><td class="line">  SetVector&lt;<span class='keyword'>const</span> SCEV *&gt; SCEVs;</td></tr>
+<tr><td class="num" id="LN276">276</td><td class="line">  <span class='keyword'>struct</span> SubtreeReferences References = {</td></tr>
+<tr><td class="num" id="LN277">277</td><td class="line">      LI, SE, S, ValueMap, Values, SCEVs, getBlockGenerator()};</td></tr>
+<tr><td class="num" id="LN278">278</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN279">279</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>const</span> <span class='keyword'>auto</span> &amp;I : IDToValue)</td></tr>
+<tr><td class="num" id="LN280">280</td><td class="line">    Values.insert(I.second);</td></tr>
+<tr><td class="num" id="LN281">281</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN282">282</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>const</span> <span class='keyword'>auto</span> &amp;I : OutsideLoopIterations)</td></tr>
+<tr><td class="num" id="LN283">283</td><td class="line">    Values.insert(cast&lt;SCEVUnknown&gt;(I.second)-&gt;getValue());</td></tr>
+<tr><td class="num" id="LN284">284</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN285">285</td><td class="line">  isl_union_set *Schedule = isl_union_map_domain(getScheduleForAstNode(For));</td></tr>
+<tr><td class="num" id="LN286">286</td><td class="line">  addReferencesFromStmtUnionSet(Schedule, References);</td></tr>
+<tr><td class="num" id="LN287">287</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN288">288</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>const</span> SCEV *Expr : SCEVs) {</td></tr>
+<tr><td class="num" id="LN289">289</td><td class="line">    findValues(Expr, SE, Values);</td></tr>
+<tr><td class="num" id="LN290">290</td><td class="line">    findLoops(Expr, Loops);</td></tr>
+<tr><td class="num" id="LN291">291</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN292">292</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN293">293</td><td class="line">  Values.remove_if([](<span class='keyword'>const</span> Value *V) { <span class='keyword'>return</span> isa&lt;GlobalValue&gt;(V); });</td></tr>
+<tr><td class="num" id="LN294">294</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN295">295</td><td class="line">  <span class='comment'>/// Remove loops that contain the scop or that are part of the scop, as they</span></td></tr>
+<tr><td class="num" id="LN296">296</td><td class="line">  <span class='comment'>/// are considered local. This leaves only loops that are before the scop, but</span></td></tr>
+<tr><td class="num" id="LN297">297</td><td class="line">  <span class='comment'>/// do not contain the scop itself.</span></td></tr>
+<tr><td class="num" id="LN298">298</td><td class="line">  Loops.remove_if([<span class='keyword'>this</span>](<span class='keyword'>const</span> Loop *L) {</td></tr>
+<tr><td class="num" id="LN299">299</td><td class="line">    <span class='keyword'>return</span> S.contains(L) || L-&gt;contains(S.getEntry());</td></tr>
+<tr><td class="num" id="LN300">300</td><td class="line">  });</td></tr>
+<tr><td class="num" id="LN301">301</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN302">302</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN303">303</td><td class="line"><span class='keyword'>void</span> IslNodeBuilder::updateValues(ValueMapT &amp;NewValues) {</td></tr>
+<tr><td class="num" id="LN304">304</td><td class="line">  SmallPtrSet&lt;Value *, 5&gt; Inserted;</td></tr>
+<tr><td class="num" id="LN305">305</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN306">306</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>const</span> <span class='keyword'>auto</span> &amp;I : IDToValue) {</td></tr>
+<tr><td class="num" id="LN307">307</td><td class="line">    IDToValue[I.first] = NewValues[I.second];</td></tr>
+<tr><td class="num" id="LN308">308</td><td class="line">    Inserted.insert(I.second);</td></tr>
+<tr><td class="num" id="LN309">309</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN310">310</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN311">311</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>const</span> <span class='keyword'>auto</span> &amp;I : NewValues) {</td></tr>
+<tr><td class="num" id="LN312">312</td><td class="line">    <span class='keyword'>if</span> (Inserted.count(I.first))</td></tr>
+<tr><td class="num" id="LN313">313</td><td class="line">      <span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN314">314</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN315">315</td><td class="line">    ValueMap[I.first] = I.second;</td></tr>
+<tr><td class="num" id="LN316">316</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN317">317</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN318">318</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN319">319</td><td class="line"><span class='keyword'>void</span> IslNodeBuilder::createUserVector(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_ast_node *User,</td></tr>
+<tr><td class="num" id="LN320">320</td><td class="line">                                      std::vector&lt;Value *&gt; &amp;IVS,</td></tr>
+<tr><td class="num" id="LN321">321</td><td class="line">                                      <span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_id *IteratorID,</td></tr>
+<tr><td class="num" id="LN322">322</td><td class="line">                                      <span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_union_map *Schedule) {</td></tr>
+<tr><td class="num" id="LN323">323</td><td class="line">  isl_ast_expr *Expr = isl_ast_node_user_get_expr(User);</td></tr>
+<tr><td class="num" id="LN324">324</td><td class="line">  isl_ast_expr *StmtExpr = isl_ast_expr_get_op_arg(Expr, 0);</td></tr>
+<tr><td class="num" id="LN325">325</td><td class="line">  isl_id *Id = isl_ast_expr_get_id(StmtExpr);</td></tr>
+<tr><td class="num" id="LN326">326</td><td class="line">  isl_ast_expr_free(StmtExpr);</td></tr>
+<tr><td class="num" id="LN327">327</td><td class="line">  ScopStmt *Stmt = (ScopStmt *)isl_id_get_user(Id);</td></tr>
+<tr><td class="num" id="LN328">328</td><td class="line">  std::vector&lt;LoopToScevMapT&gt; VLTS(IVS.size());</td></tr>
+<tr><td class="num" id="LN329">329</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN330">330</td><td class="line">  isl_union_set *Domain = isl_union_set_from_set(Stmt-&gt;getDomain());</td></tr>
+<tr><td class="num" id="LN331">331</td><td class="line">  Schedule = isl_union_map_intersect_domain(Schedule, Domain);</td></tr>
+<tr><td class="num" id="LN332">332</td><td class="line">  isl_map *S = isl_map_from_union_map(Schedule);</td></tr>
+<tr><td class="num" id="LN333">333</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN334">334</td><td class="line">  <span class='keyword'>auto</span> *NewAccesses = createNewAccesses(Stmt, User);</td></tr>
+<tr><td class="num" id="LN335">335</td><td class="line">  createSubstitutionsVector(Expr, Stmt, VLTS, IVS, IteratorID);</td></tr>
+<tr><td class="num" id="LN336">336</td><td class="line">  VectorBlockGenerator::generate(BlockGen, *Stmt, VLTS, S, NewAccesses);</td></tr>
+<tr><td class="num" id="LN337">337</td><td class="line">  isl_id_to_ast_expr_free(NewAccesses);</td></tr>
+<tr><td class="num" id="LN338">338</td><td class="line">  isl_map_free(S);</td></tr>
+<tr><td class="num" id="LN339">339</td><td class="line">  isl_id_free(Id);</td></tr>
+<tr><td class="num" id="LN340">340</td><td class="line">  isl_ast_node_free(User);</td></tr>
+<tr><td class="num" id="LN341">341</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN342">342</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN343">343</td><td class="line"><span class='keyword'>void</span> IslNodeBuilder::createMark(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_ast_node *Node) {</td></tr>
+<tr><td class="num" id="LN344">344</td><td class="line">  <span class='keyword'>auto</span> *Id = isl_ast_node_mark_get_id(Node);</td></tr>
+<tr><td class="num" id="LN345">345</td><td class="line">  <span class='keyword'>auto</span> Child = isl_ast_node_mark_get_node(Node);</td></tr>
+<tr><td class="num" id="LN346">346</td><td class="line">  isl_ast_node_free(Node);</td></tr>
+<tr><td class="num" id="LN347">347</td><td class="line">  <span class='comment'>// If a child node of a 'SIMD mark' is a loop that has a single iteration,</span></td></tr>
+<tr><td class="num" id="LN348">348</td><td class="line">  <span class='comment'>// it will be optimized away and we should skip it.</span></td></tr>
+<tr><td class="num" id="LN349">349</td><td class="line">  <span class='keyword'>if</span> (!strcmp(isl_id_get_name(Id), <span class='string_literal'>"SIMD"</span>) &amp;&amp;</td></tr>
+<tr><td class="num" id="LN350">350</td><td class="line">      isl_ast_node_get_type(Child) == isl_ast_node_for) {</td></tr>
+<tr><td class="num" id="LN351">351</td><td class="line">    <span class='keyword'>bool</span> Vector = PollyVectorizerChoice == VECTORIZER_POLLY;</td></tr>
+<tr><td class="num" id="LN352">352</td><td class="line">    <span class='keyword'>int</span> VectorWidth = getNumberOfIterations(Child);</td></tr>
+<tr><td class="num" id="LN353">353</td><td class="line">    <span class='keyword'>if</span> (Vector &amp;&amp; 1 &lt; VectorWidth &amp;&amp; VectorWidth &lt;= 16)</td></tr>
+<tr><td class="num" id="LN354">354</td><td class="line">      createForVector(Child, VectorWidth);</td></tr>
+<tr><td class="num" id="LN355">355</td><td class="line">    <span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN356">356</td><td class="line">      createForSequential(Child, <span class='keyword'>true</span>);</td></tr>
+<tr><td class="num" id="LN357">357</td><td class="line">    isl_id_free(Id);</td></tr>
+<tr><td class="num" id="LN358">358</td><td class="line">    <span class='keyword'>return</span>;</td></tr>
+<tr><td class="num" id="LN359">359</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN360">360</td><td class="line">  create(Child);</td></tr>
+<tr><td class="num" id="LN361">361</td><td class="line">  isl_id_free(Id);</td></tr>
+<tr><td class="num" id="LN362">362</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN363">363</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN364">364</td><td class="line"><span class='keyword'>void</span> IslNodeBuilder::createForVector(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_ast_node *For,</td></tr>
+<tr><td class="num" id="LN365">365</td><td class="line">                                     <span class='keyword'>int</span> VectorWidth) {</td></tr>
+<tr><td class="num" id="LN366">366</td><td class="line">  isl_ast_node *Body = isl_ast_node_for_get_body(For);</td></tr>
+<tr><td class="num" id="LN367">367</td><td class="line">  isl_ast_expr *Init = isl_ast_node_for_get_init(For);</td></tr>
+<tr><td class="num" id="LN368">368</td><td class="line">  isl_ast_expr *Inc = isl_ast_node_for_get_inc(For);</td></tr>
+<tr><td class="num" id="LN369">369</td><td class="line">  isl_ast_expr *Iterator = isl_ast_node_for_get_iterator(For);</td></tr>
+<tr><td class="num" id="LN370">370</td><td class="line">  isl_id *IteratorID = isl_ast_expr_get_id(Iterator);</td></tr>
+<tr><td class="num" id="LN371">371</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN372">372</td><td class="line">  Value *ValueLB = ExprBuilder.create(Init);</td></tr>
+<tr><td class="num" id="LN373">373</td><td class="line">  Value *ValueInc = ExprBuilder.create(Inc);</td></tr>
+<tr><td class="num" id="LN374">374</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN375">375</td><td class="line">  Type *MaxType = ExprBuilder.getType(Iterator);</td></tr>
+<tr><td class="num" id="LN376">376</td><td class="line">  MaxType = ExprBuilder.getWidestType(MaxType, ValueLB-&gt;getType());</td></tr>
+<tr><td class="num" id="LN377">377</td><td class="line">  MaxType = ExprBuilder.getWidestType(MaxType, ValueInc-&gt;getType());</td></tr>
+<tr><td class="num" id="LN378">378</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN379">379</td><td class="line">  <span class='keyword'>if</span> (MaxType != ValueLB-&gt;getType())</td></tr>
+<tr><td class="num" id="LN380">380</td><td class="line">    ValueLB = Builder.CreateSExt(ValueLB, MaxType);</td></tr>
+<tr><td class="num" id="LN381">381</td><td class="line">  <span class='keyword'>if</span> (MaxType != ValueInc-&gt;getType())</td></tr>
+<tr><td class="num" id="LN382">382</td><td class="line">    ValueInc = Builder.CreateSExt(ValueInc, MaxType);</td></tr>
+<tr><td class="num" id="LN383">383</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN384">384</td><td class="line">  std::vector&lt;Value *&gt; IVS(VectorWidth);</td></tr>
+<tr><td class="num" id="LN385">385</td><td class="line">  IVS[0] = ValueLB;</td></tr>
+<tr><td class="num" id="LN386">386</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN387">387</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>int</span> i = 1; i &lt; VectorWidth; i++)</td></tr>
+<tr><td class="num" id="LN388">388</td><td class="line">    IVS[i] = Builder.CreateAdd(IVS[i - 1], ValueInc, <span class='string_literal'>"p_vector_iv"</span>);</td></tr>
+<tr><td class="num" id="LN389">389</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN390">390</td><td class="line">  isl_union_map *Schedule = getScheduleForAstNode(For);</td></tr>
+<tr><td class="num" id="LN391">391</td><td class="line">  <span class='macro'>assert(Schedule &amp;&amp; <span class='string_literal'>"For statement annotation does not contain its schedule"</span>)<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN392">392</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN393">393</td><td class="line">  IDToValue[IteratorID] = ValueLB;</td></tr>
+<tr><td class="num" id="LN394">394</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN395">395</td><td class="line">  <span class='keyword'>switch</span> (isl_ast_node_get_type(Body)) {</td></tr>
+<tr><td class="num" id="LN396">396</td><td class="line">  <span class='keyword'>case</span> isl_ast_node_user:</td></tr>
+<tr><td class="num" id="LN397">397</td><td class="line">    createUserVector(Body, IVS, isl_id_copy(IteratorID),</td></tr>
+<tr><td class="num" id="LN398">398</td><td class="line">                     isl_union_map_copy(Schedule));</td></tr>
+<tr><td class="num" id="LN399">399</td><td class="line">    <span class='keyword'>break</span>;</td></tr>
+<tr><td class="num" id="LN400">400</td><td class="line">  <span class='keyword'>case</span> isl_ast_node_block: {</td></tr>
+<tr><td class="num" id="LN401">401</td><td class="line">    isl_ast_node_list *List = isl_ast_node_block_get_children(Body);</td></tr>
+<tr><td class="num" id="LN402">402</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN403">403</td><td class="line">    <span class='keyword'>for</span> (<span class='keyword'>int</span> i = 0; i &lt; isl_ast_node_list_n_ast_node(List); ++i)</td></tr>
+<tr><td class="num" id="LN404">404</td><td class="line">      createUserVector(isl_ast_node_list_get_ast_node(List, i), IVS,</td></tr>
+<tr><td class="num" id="LN405">405</td><td class="line">                       isl_id_copy(IteratorID), isl_union_map_copy(Schedule));</td></tr>
+<tr><td class="num" id="LN406">406</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN407">407</td><td class="line">    isl_ast_node_free(Body);</td></tr>
+<tr><td class="num" id="LN408">408</td><td class="line">    isl_ast_node_list_free(List);</td></tr>
+<tr><td class="num" id="LN409">409</td><td class="line">    <span class='keyword'>break</span>;</td></tr>
+<tr><td class="num" id="LN410">410</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN411">411</td><td class="line">  <span class='keyword'>default</span>:</td></tr>
+<tr><td class="num" id="LN412">412</td><td class="line">    isl_ast_node_dump(Body);</td></tr>
+<tr><td class="num" id="LN413">413</td><td class="line">    <span class='macro'>llvm_unreachable(<span class='string_literal'>"Unhandled isl_ast_node in vectorizer"</span>)<span class='expansion'>__builtin_unreachable()</span></span>;</td></tr>
+<tr><td class="num" id="LN414">414</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN415">415</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN416">416</td><td class="line">  IDToValue.erase(IDToValue.find(IteratorID));</td></tr>
+<tr><td class="num" id="LN417">417</td><td class="line">  isl_id_free(IteratorID);</td></tr>
+<tr><td class="num" id="LN418">418</td><td class="line">  isl_union_map_free(Schedule);</td></tr>
+<tr><td class="num" id="LN419">419</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN420">420</td><td class="line">  isl_ast_node_free(For);</td></tr>
+<tr><td class="num" id="LN421">421</td><td class="line">  isl_ast_expr_free(Iterator);</td></tr>
+<tr><td class="num" id="LN422">422</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN423">423</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN424">424</td><td class="line"><span class='keyword'>void</span> IslNodeBuilder::createForSequential(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_ast_node *For,</td></tr>
+<tr><td class="num" id="LN425">425</td><td class="line">                                         <span class='keyword'>bool</span> KnownParallel) {</td></tr>
+<tr><td class="num" id="LN426">426</td><td class="line">  isl_ast_node *Body;</td></tr>
+<tr><td class="num" id="LN427">427</td><td class="line">  isl_ast_expr *Init, *Inc, *Iterator, *UB;</td></tr>
+<tr><td class="num" id="LN428">428</td><td class="line">  isl_id *IteratorID;</td></tr>
+<tr><td class="num" id="LN429">429</td><td class="line">  Value *ValueLB, *ValueUB, *ValueInc;</td></tr>
+<tr><td class="num" id="LN430">430</td><td class="line">  Type *MaxType;</td></tr>
+<tr><td class="num" id="LN431">431</td><td class="line">  BasicBlock *ExitBlock;</td></tr>
+<tr><td class="num" id="LN432">432</td><td class="line">  Value *IV;</td></tr>
+<tr><td class="num" id="LN433">433</td><td class="line">  CmpInst::Predicate Predicate;</td></tr>
+<tr><td class="num" id="LN434">434</td><td class="line">  <span class='keyword'>bool</span> Parallel;</td></tr>
+<tr><td class="num" id="LN435">435</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN436">436</td><td class="line">  Parallel = KnownParallel || (IslAstInfo::isParallel(For) &amp;&amp;</td></tr>
+<tr><td class="num" id="LN437">437</td><td class="line">                               !IslAstInfo::isReductionParallel(For));</td></tr>
+<tr><td class="num" id="LN438">438</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN439">439</td><td class="line">  Body = isl_ast_node_for_get_body(For);</td></tr>
+<tr><td class="num" id="LN440">440</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN441">441</td><td class="line">  <span class='comment'>// isl_ast_node_for_is_degenerate(For)</span></td></tr>
+<tr><td class="num" id="LN442">442</td><td class="line">  <span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN443">443</td><td class="line">  <span class='comment'>// TODO: For degenerated loops we could generate a plain assignment.</span></td></tr>
+<tr><td class="num" id="LN444">444</td><td class="line">  <span class='comment'>//       However, for now we just reuse the logic for normal loops, which will</span></td></tr>
+<tr><td class="num" id="LN445">445</td><td class="line">  <span class='comment'>//       create a loop with a single iteration.</span></td></tr>
+<tr><td class="num" id="LN446">446</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN447">447</td><td class="line">  Init = isl_ast_node_for_get_init(For);</td></tr>
+<tr><td class="num" id="LN448">448</td><td class="line">  Inc = isl_ast_node_for_get_inc(For);</td></tr>
+<tr><td class="num" id="LN449">449</td><td class="line">  Iterator = isl_ast_node_for_get_iterator(For);</td></tr>
+<tr><td class="num" id="LN450">450</td><td class="line">  IteratorID = isl_ast_expr_get_id(Iterator);</td></tr>
+<tr><td class="num" id="LN451">451</td><td class="line">  UB = getUpperBound(For, Predicate);</td></tr>
+<tr><td class="num" id="LN452">452</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN453">453</td><td class="line">  ValueLB = ExprBuilder.create(Init);</td></tr>
+<tr><td class="num" id="LN454">454</td><td class="line">  ValueUB = ExprBuilder.create(UB);</td></tr>
+<tr><td class="num" id="LN455">455</td><td class="line">  ValueInc = ExprBuilder.create(Inc);</td></tr>
+<tr><td class="num" id="LN456">456</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN457">457</td><td class="line">  MaxType = ExprBuilder.getType(Iterator);</td></tr>
+<tr><td class="num" id="LN458">458</td><td class="line">  MaxType = ExprBuilder.getWidestType(MaxType, ValueLB-&gt;getType());</td></tr>
+<tr><td class="num" id="LN459">459</td><td class="line">  MaxType = ExprBuilder.getWidestType(MaxType, ValueUB-&gt;getType());</td></tr>
+<tr><td class="num" id="LN460">460</td><td class="line">  MaxType = ExprBuilder.getWidestType(MaxType, ValueInc-&gt;getType());</td></tr>
+<tr><td class="num" id="LN461">461</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN462">462</td><td class="line">  <span class='keyword'>if</span> (MaxType != ValueLB-&gt;getType())</td></tr>
+<tr><td class="num" id="LN463">463</td><td class="line">    ValueLB = Builder.CreateSExt(ValueLB, MaxType);</td></tr>
+<tr><td class="num" id="LN464">464</td><td class="line">  <span class='keyword'>if</span> (MaxType != ValueUB-&gt;getType())</td></tr>
+<tr><td class="num" id="LN465">465</td><td class="line">    ValueUB = Builder.CreateSExt(ValueUB, MaxType);</td></tr>
+<tr><td class="num" id="LN466">466</td><td class="line">  <span class='keyword'>if</span> (MaxType != ValueInc-&gt;getType())</td></tr>
+<tr><td class="num" id="LN467">467</td><td class="line">    ValueInc = Builder.CreateSExt(ValueInc, MaxType);</td></tr>
+<tr><td class="num" id="LN468">468</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN469">469</td><td class="line">  <span class='comment'>// If we can show that LB &lt;Predicate&gt; UB holds at least once, we can</span></td></tr>
+<tr><td class="num" id="LN470">470</td><td class="line">  <span class='comment'>// omit the GuardBB in front of the loop.</span></td></tr>
+<tr><td class="num" id="LN471">471</td><td class="line">  <span class='keyword'>bool</span> UseGuardBB =</td></tr>
+<tr><td class="num" id="LN472">472</td><td class="line">      !SE.isKnownPredicate(Predicate, SE.getSCEV(ValueLB), SE.getSCEV(ValueUB));</td></tr>
+<tr><td class="num" id="LN473">473</td><td class="line">  IV = createLoop(ValueLB, ValueUB, ValueInc, Builder, P, LI, DT, ExitBlock,</td></tr>
+<tr><td class="num" id="LN474">474</td><td class="line">                  Predicate, &amp;Annotator, Parallel, UseGuardBB);</td></tr>
+<tr><td class="num" id="LN475">475</td><td class="line">  IDToValue[IteratorID] = IV;</td></tr>
+<tr><td class="num" id="LN476">476</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN477">477</td><td class="line">  create(Body);</td></tr>
+<tr><td class="num" id="LN478">478</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN479">479</td><td class="line">  Annotator.popLoop(Parallel);</td></tr>
+<tr><td class="num" id="LN480">480</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN481">481</td><td class="line">  IDToValue.erase(IDToValue.find(IteratorID));</td></tr>
+<tr><td class="num" id="LN482">482</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN483">483</td><td class="line">  Builder.SetInsertPoint(&amp;ExitBlock-&gt;front());</td></tr>
+<tr><td class="num" id="LN484">484</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN485">485</td><td class="line">  isl_ast_node_free(For);</td></tr>
+<tr><td class="num" id="LN486">486</td><td class="line">  isl_ast_expr_free(Iterator);</td></tr>
+<tr><td class="num" id="LN487">487</td><td class="line">  isl_id_free(IteratorID);</td></tr>
+<tr><td class="num" id="LN488">488</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN489">489</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN490">490</td><td class="line"><span class='comment'>/// Remove the BBs contained in a (sub)function from the dominator tree.</span></td></tr>
+<tr><td class="num" id="LN491">491</td><td class="line"><span class='comment'>///</span></td></tr>
+<tr><td class="num" id="LN492">492</td><td class="line"><span class='comment'>/// This function removes the basic blocks that are part of a subfunction from</span></td></tr>
+<tr><td class="num" id="LN493">493</td><td class="line"><span class='comment'>/// the dominator tree. Specifically, when generating code it may happen that at</span></td></tr>
+<tr><td class="num" id="LN494">494</td><td class="line"><span class='comment'>/// some point the code generation continues in a new sub-function (e.g., when</span></td></tr>
+<tr><td class="num" id="LN495">495</td><td class="line"><span class='comment'>/// generating OpenMP code). The basic blocks that are created in this</span></td></tr>
+<tr><td class="num" id="LN496">496</td><td class="line"><span class='comment'>/// sub-function are then still part of the dominator tree of the original</span></td></tr>
+<tr><td class="num" id="LN497">497</td><td class="line"><span class='comment'>/// function, such that the dominator tree reaches over function boundaries.</span></td></tr>
+<tr><td class="num" id="LN498">498</td><td class="line"><span class='comment'>/// This is not only incorrect, but also causes crashes. This function now</span></td></tr>
+<tr><td class="num" id="LN499">499</td><td class="line"><span class='comment'>/// removes from the dominator tree all basic blocks that are dominated (and</span></td></tr>
+<tr><td class="num" id="LN500">500</td><td class="line"><span class='comment'>/// consequently reachable) from the entry block of this (sub)function.</span></td></tr>
+<tr><td class="num" id="LN501">501</td><td class="line"><span class='comment'>///</span></td></tr>
+<tr><td class="num" id="LN502">502</td><td class="line"><span class='comment'>/// FIXME: A LLVM (function or region) pass should not touch anything outside of</span></td></tr>
+<tr><td class="num" id="LN503">503</td><td class="line"><span class='comment'>/// the function/region it runs on. Hence, the pure need for this function shows</span></td></tr>
+<tr><td class="num" id="LN504">504</td><td class="line"><span class='comment'>/// that we do not comply to this rule. At the moment, this does not cause any</span></td></tr>
+<tr><td class="num" id="LN505">505</td><td class="line"><span class='comment'>/// issues, but we should be aware that such issues may appear. Unfortunately</span></td></tr>
+<tr><td class="num" id="LN506">506</td><td class="line"><span class='comment'>/// the current LLVM pass infrastructure does not allow to make Polly a module</span></td></tr>
+<tr><td class="num" id="LN507">507</td><td class="line"><span class='comment'>/// or call-graph pass to solve this issue, as such a pass would not have access</span></td></tr>
+<tr><td class="num" id="LN508">508</td><td class="line"><span class='comment'>/// to the per-function analyses passes needed by Polly. A future pass manager</span></td></tr>
+<tr><td class="num" id="LN509">509</td><td class="line"><span class='comment'>/// infrastructure is supposed to enable such kind of access possibly allowing</span></td></tr>
+<tr><td class="num" id="LN510">510</td><td class="line"><span class='comment'>/// us to create a cleaner solution here.</span></td></tr>
+<tr><td class="num" id="LN511">511</td><td class="line"><span class='comment'>///</span></td></tr>
+<tr><td class="num" id="LN512">512</td><td class="line"><span class='comment'>/// FIXME: Instead of adding the dominance information and then dropping it</span></td></tr>
+<tr><td class="num" id="LN513">513</td><td class="line"><span class='comment'>/// later on, we should try to just not add it in the first place. This requires</span></td></tr>
+<tr><td class="num" id="LN514">514</td><td class="line"><span class='comment'>/// some careful testing to make sure this does not break in interaction with</span></td></tr>
+<tr><td class="num" id="LN515">515</td><td class="line"><span class='comment'>/// the SCEVBuilder and SplitBlock which may rely on the dominator tree or</span></td></tr>
+<tr><td class="num" id="LN516">516</td><td class="line"><span class='comment'>/// which may try to update it.</span></td></tr>
+<tr><td class="num" id="LN517">517</td><td class="line"><span class='comment'>///</span></td></tr>
+<tr><td class="num" id="LN518">518</td><td class="line"><span class='comment'>/// @param F The function which contains the BBs to removed.</span></td></tr>
+<tr><td class="num" id="LN519">519</td><td class="line"><span class='comment'>/// @param DT The dominator tree from which to remove the BBs.</span></td></tr>
+<tr><td class="num" id="LN520">520</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>void</span> removeSubFuncFromDomTree(Function *F, DominatorTree &amp;DT) {</td></tr>
+<tr><td class="num" id="LN521">521</td><td class="line">  DomTreeNode *N = DT.getNode(&amp;F-&gt;getEntryBlock());</td></tr>
+<tr><td class="num" id="LN522">522</td><td class="line">  std::vector&lt;BasicBlock *&gt; Nodes;</td></tr>
+<tr><td class="num" id="LN523">523</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN524">524</td><td class="line">  <span class='comment'>// We can only remove an element from the dominator tree, if all its children</span></td></tr>
+<tr><td class="num" id="LN525">525</td><td class="line">  <span class='comment'>// have been removed. To ensure this we obtain the list of nodes to remove</span></td></tr>
+<tr><td class="num" id="LN526">526</td><td class="line">  <span class='comment'>// using a post-order tree traversal.</span></td></tr>
+<tr><td class="num" id="LN527">527</td><td class="line">  <span class='keyword'>for</span> (po_iterator&lt;DomTreeNode *&gt; I = po_begin(N), E = po_end(N); I != E; ++I)</td></tr>
+<tr><td class="num" id="LN528">528</td><td class="line">    Nodes.push_back(I-&gt;getBlock());</td></tr>
+<tr><td class="num" id="LN529">529</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN530">530</td><td class="line">  <span class='keyword'>for</span> (BasicBlock *BB : Nodes)</td></tr>
+<tr><td class="num" id="LN531">531</td><td class="line">    DT.eraseNode(BB);</td></tr>
+<tr><td class="num" id="LN532">532</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN533">533</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN534">534</td><td class="line"><span class='keyword'>void</span> IslNodeBuilder::createForParallel(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_ast_node *For) {</td></tr>
+<tr><td class="num" id="LN535">535</td><td class="line">  isl_ast_node *Body;</td></tr>
+<tr><td class="num" id="LN536">536</td><td class="line">  isl_ast_expr *Init, *Inc, *Iterator, *UB;</td></tr>
+<tr><td class="num" id="LN537">537</td><td class="line">  isl_id *IteratorID;</td></tr>
+<tr><td class="num" id="LN538">538</td><td class="line">  Value *ValueLB, *ValueUB, *ValueInc;</td></tr>
+<tr><td class="num" id="LN539">539</td><td class="line">  Type *MaxType;</td></tr>
+<tr><td class="num" id="LN540">540</td><td class="line">  Value *IV;</td></tr>
+<tr><td class="num" id="LN541">541</td><td class="line">  CmpInst::Predicate Predicate;</td></tr>
+<tr><td class="num" id="LN542">542</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN543">543</td><td class="line">  <span class='comment'>// The preamble of parallel code interacts different than normal code with</span></td></tr>
+<tr><td class="num" id="LN544">544</td><td class="line">  <span class='comment'>// e.g., scalar initialization. Therefore, we ensure the parallel code is</span></td></tr>
+<tr><td class="num" id="LN545">545</td><td class="line">  <span class='comment'>// separated from the last basic block.</span></td></tr>
+<tr><td class="num" id="LN546">546</td><td class="line">  BasicBlock *ParBB = SplitBlock(Builder.GetInsertBlock(),</td></tr>
+<tr><td class="num" id="LN547">547</td><td class="line">                                 &amp;*Builder.GetInsertPoint(), &amp;DT, &amp;LI);</td></tr>
+<tr><td class="num" id="LN548">548</td><td class="line">  ParBB-&gt;setName(<span class='string_literal'>"polly.parallel.for"</span>);</td></tr>
+<tr><td class="num" id="LN549">549</td><td class="line">  Builder.SetInsertPoint(&amp;ParBB-&gt;front());</td></tr>
+<tr><td class="num" id="LN550">550</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN551">551</td><td class="line">  Body = isl_ast_node_for_get_body(For);</td></tr>
+<tr><td class="num" id="LN552">552</td><td class="line">  Init = isl_ast_node_for_get_init(For);</td></tr>
+<tr><td class="num" id="LN553">553</td><td class="line">  Inc = isl_ast_node_for_get_inc(For);</td></tr>
+<tr><td class="num" id="LN554">554</td><td class="line">  Iterator = isl_ast_node_for_get_iterator(For);</td></tr>
+<tr><td class="num" id="LN555">555</td><td class="line">  IteratorID = isl_ast_expr_get_id(Iterator);</td></tr>
+<tr><td class="num" id="LN556">556</td><td class="line">  UB = getUpperBound(For, Predicate);</td></tr>
+<tr><td class="num" id="LN557">557</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN558">558</td><td class="line">  ValueLB = ExprBuilder.create(Init);</td></tr>
+<tr><td class="num" id="LN559">559</td><td class="line">  ValueUB = ExprBuilder.create(UB);</td></tr>
+<tr><td class="num" id="LN560">560</td><td class="line">  ValueInc = ExprBuilder.create(Inc);</td></tr>
+<tr><td class="num" id="LN561">561</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN562">562</td><td class="line">  <span class='comment'>// OpenMP always uses SLE. In case the isl generated AST uses a SLT</span></td></tr>
+<tr><td class="num" id="LN563">563</td><td class="line">  <span class='comment'>// expression, we need to adjust the loop blound by one.</span></td></tr>
+<tr><td class="num" id="LN564">564</td><td class="line">  <span class='keyword'>if</span> (Predicate == CmpInst::ICMP_SLT)</td></tr>
+<tr><td class="num" id="LN565">565</td><td class="line">    ValueUB = Builder.CreateAdd(</td></tr>
+<tr><td class="num" id="LN566">566</td><td class="line">        ValueUB, Builder.CreateSExt(Builder.getTrue(), ValueUB-&gt;getType()));</td></tr>
+<tr><td class="num" id="LN567">567</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN568">568</td><td class="line">  MaxType = ExprBuilder.getType(Iterator);</td></tr>
+<tr><td class="num" id="LN569">569</td><td class="line">  MaxType = ExprBuilder.getWidestType(MaxType, ValueLB-&gt;getType());</td></tr>
+<tr><td class="num" id="LN570">570</td><td class="line">  MaxType = ExprBuilder.getWidestType(MaxType, ValueUB-&gt;getType());</td></tr>
+<tr><td class="num" id="LN571">571</td><td class="line">  MaxType = ExprBuilder.getWidestType(MaxType, ValueInc-&gt;getType());</td></tr>
+<tr><td class="num" id="LN572">572</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN573">573</td><td class="line">  <span class='keyword'>if</span> (MaxType != ValueLB-&gt;getType())</td></tr>
+<tr><td class="num" id="LN574">574</td><td class="line">    ValueLB = Builder.CreateSExt(ValueLB, MaxType);</td></tr>
+<tr><td class="num" id="LN575">575</td><td class="line">  <span class='keyword'>if</span> (MaxType != ValueUB-&gt;getType())</td></tr>
+<tr><td class="num" id="LN576">576</td><td class="line">    ValueUB = Builder.CreateSExt(ValueUB, MaxType);</td></tr>
+<tr><td class="num" id="LN577">577</td><td class="line">  <span class='keyword'>if</span> (MaxType != ValueInc-&gt;getType())</td></tr>
+<tr><td class="num" id="LN578">578</td><td class="line">    ValueInc = Builder.CreateSExt(ValueInc, MaxType);</td></tr>
+<tr><td class="num" id="LN579">579</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN580">580</td><td class="line">  BasicBlock::iterator LoopBody;</td></tr>
+<tr><td class="num" id="LN581">581</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN582">582</td><td class="line">  SetVector&lt;Value *&gt; SubtreeValues;</td></tr>
+<tr><td class="num" id="LN583">583</td><td class="line">  SetVector&lt;<span class='keyword'>const</span> Loop *&gt; Loops;</td></tr>
+<tr><td class="num" id="LN584">584</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN585">585</td><td class="line">  getReferencesInSubtree(For, SubtreeValues, Loops);</td></tr>
+<tr><td class="num" id="LN586">586</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN587">587</td><td class="line">  <span class='comment'>// Create for all loops we depend on values that contain the current loop</span></td></tr>
+<tr><td class="num" id="LN588">588</td><td class="line">  <span class='comment'>// iteration. These values are necessary to generate code for SCEVs that</span></td></tr>
+<tr><td class="num" id="LN589">589</td><td class="line">  <span class='comment'>// depend on such loops. As a result we need to pass them to the subfunction.</span></td></tr>
+<tr><td class="num" id="LN590">590</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>const</span> Loop *L : Loops) {</td></tr>
+<tr><td class="num" id="LN591">591</td><td class="line">    <span class='keyword'>const</span> SCEV *OuterLIV = SE.getAddRecExpr(SE.getUnknown(Builder.getInt64(0)),</td></tr>
+<tr><td class="num" id="LN592">592</td><td class="line">                                            SE.getUnknown(Builder.getInt64(1)),</td></tr>
+<tr><td class="num" id="LN593">593</td><td class="line">                                            L, SCEV::FlagAnyWrap);</td></tr>
+<tr><td class="num" id="LN594">594</td><td class="line">    Value *V = generateSCEV(OuterLIV);</td></tr>
+<tr><td class="num" id="LN595">595</td><td class="line">    OutsideLoopIterations[L] = SE.getUnknown(V);</td></tr>
+<tr><td class="num" id="LN596">596</td><td class="line">    SubtreeValues.insert(V);</td></tr>
+<tr><td class="num" id="LN597">597</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN598">598</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN599">599</td><td class="line">  ValueMapT NewValues;</td></tr>
+<tr><td class="num" id="LN600">600</td><td class="line">  ParallelLoopGenerator ParallelLoopGen(Builder, P, LI, DT, DL);</td></tr>
+<tr><td class="num" id="LN601">601</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN602">602</td><td class="line">  IV = ParallelLoopGen.createParallelLoop(ValueLB, ValueUB, ValueInc,</td></tr>
+<tr><td class="num" id="LN603">603</td><td class="line">                                          SubtreeValues, NewValues, &amp;LoopBody);</td></tr>
+<tr><td class="num" id="LN604">604</td><td class="line">  BasicBlock::iterator AfterLoop = Builder.GetInsertPoint();</td></tr>
+<tr><td class="num" id="LN605">605</td><td class="line">  Builder.SetInsertPoint(&amp;*LoopBody);</td></tr>
+<tr><td class="num" id="LN606">606</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN607">607</td><td class="line">  <span class='comment'>// Remember the parallel subfunction</span></td></tr>
+<tr><td class="num" id="LN608">608</td><td class="line">  ParallelSubfunctions.push_back(LoopBody-&gt;getFunction());</td></tr>
+<tr><td class="num" id="LN609">609</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN610">610</td><td class="line">  <span class='comment'>// Save the current values.</span></td></tr>
+<tr><td class="num" id="LN611">611</td><td class="line">  <span class='keyword'>auto</span> ValueMapCopy = ValueMap;</td></tr>
+<tr><td class="num" id="LN612">612</td><td class="line">  IslExprBuilder::IDToValueTy IDToValueCopy = IDToValue;</td></tr>
+<tr><td class="num" id="LN613">613</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN614">614</td><td class="line">  updateValues(NewValues);</td></tr>
+<tr><td class="num" id="LN615">615</td><td class="line">  IDToValue[IteratorID] = IV;</td></tr>
+<tr><td class="num" id="LN616">616</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN617">617</td><td class="line">  ValueMapT NewValuesReverse;</td></tr>
+<tr><td class="num" id="LN618">618</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN619">619</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>auto</span> P : NewValues)</td></tr>
+<tr><td class="num" id="LN620">620</td><td class="line">    NewValuesReverse[P.second] = P.first;</td></tr>
+<tr><td class="num" id="LN621">621</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN622">622</td><td class="line">  Annotator.addAlternativeAliasBases(NewValuesReverse);</td></tr>
+<tr><td class="num" id="LN623">623</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN624">624</td><td class="line">  create(Body);</td></tr>
+<tr><td class="num" id="LN625">625</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN626">626</td><td class="line">  Annotator.resetAlternativeAliasBases();</td></tr>
+<tr><td class="num" id="LN627">627</td><td class="line">  <span class='comment'>// Restore the original values.</span></td></tr>
+<tr><td class="num" id="LN628">628</td><td class="line">  ValueMap = ValueMapCopy;</td></tr>
+<tr><td class="num" id="LN629">629</td><td class="line">  IDToValue = IDToValueCopy;</td></tr>
+<tr><td class="num" id="LN630">630</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN631">631</td><td class="line">  Builder.SetInsertPoint(&amp;*AfterLoop);</td></tr>
+<tr><td class="num" id="LN632">632</td><td class="line">  removeSubFuncFromDomTree((*LoopBody).getParent()-&gt;getParent(), DT);</td></tr>
+<tr><td class="num" id="LN633">633</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN634">634</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>const</span> Loop *L : Loops)</td></tr>
+<tr><td class="num" id="LN635">635</td><td class="line">    OutsideLoopIterations.erase(L);</td></tr>
+<tr><td class="num" id="LN636">636</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN637">637</td><td class="line">  isl_ast_node_free(For);</td></tr>
+<tr><td class="num" id="LN638">638</td><td class="line">  isl_ast_expr_free(Iterator);</td></tr>
+<tr><td class="num" id="LN639">639</td><td class="line">  isl_id_free(IteratorID);</td></tr>
+<tr><td class="num" id="LN640">640</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN641">641</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN642">642</td><td class="line"><span class='keyword'>void</span> IslNodeBuilder::createFor(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_ast_node *For) {</td></tr>
+<tr><td class="num" id="LN643">643</td><td class="line">  <span class='keyword'>bool</span> Vector = PollyVectorizerChoice == VECTORIZER_POLLY;</td></tr>
+<tr><td class="num" id="LN644">644</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN645">645</td><td class="line">  <span class='keyword'>if</span> (Vector &amp;&amp; IslAstInfo::isInnermostParallel(For) &amp;&amp;</td></tr>
+<tr><td class="num" id="LN646">646</td><td class="line">      !IslAstInfo::isReductionParallel(For)) {</td></tr>
+<tr><td class="num" id="LN647">647</td><td class="line">    <span class='keyword'>int</span> VectorWidth = getNumberOfIterations(For);</td></tr>
+<tr><td class="num" id="LN648">648</td><td class="line">    <span class='keyword'>if</span> (1 &lt; VectorWidth &amp;&amp; VectorWidth &lt;= 16) {</td></tr>
+<tr><td class="num" id="LN649">649</td><td class="line">      createForVector(For, VectorWidth);</td></tr>
+<tr><td class="num" id="LN650">650</td><td class="line">      <span class='keyword'>return</span>;</td></tr>
+<tr><td class="num" id="LN651">651</td><td class="line">    }</td></tr>
+<tr><td class="num" id="LN652">652</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN653">653</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN654">654</td><td class="line">  <span class='keyword'>if</span> (IslAstInfo::isExecutedInParallel(For)) {</td></tr>
+<tr><td class="num" id="LN655">655</td><td class="line">    createForParallel(For);</td></tr>
+<tr><td class="num" id="LN656">656</td><td class="line">    <span class='keyword'>return</span>;</td></tr>
+<tr><td class="num" id="LN657">657</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN658">658</td><td class="line">  createForSequential(For, <span class='keyword'>false</span>);</td></tr>
+<tr><td class="num" id="LN659">659</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN660">660</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN661">661</td><td class="line"><span class='keyword'>void</span> IslNodeBuilder::createIf(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_ast_node *If) {</td></tr>
+<tr><td class="num" id="LN662">662</td><td class="line">  isl_ast_expr *Cond = isl_ast_node_if_get_cond(If);</td></tr>
+<tr><td class="num" id="LN663">663</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN664">664</td><td class="line">  Function *F = Builder.GetInsertBlock()-&gt;getParent();</td></tr>
+<tr><td class="num" id="LN665">665</td><td class="line">  LLVMContext &amp;Context = F-&gt;getContext();</td></tr>
+<tr><td class="num" id="LN666">666</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN667">667</td><td class="line">  BasicBlock *CondBB = SplitBlock(Builder.GetInsertBlock(),</td></tr>
+<tr><td class="num" id="LN668">668</td><td class="line">                                  &amp;*Builder.GetInsertPoint(), &amp;DT, &amp;LI);</td></tr>
+<tr><td class="num" id="LN669">669</td><td class="line">  CondBB-&gt;setName(<span class='string_literal'>"polly.cond"</span>);</td></tr>
+<tr><td class="num" id="LN670">670</td><td class="line">  BasicBlock *MergeBB = SplitBlock(CondBB, &amp;CondBB-&gt;front(), &amp;DT, &amp;LI);</td></tr>
+<tr><td class="num" id="LN671">671</td><td class="line">  MergeBB-&gt;setName(<span class='string_literal'>"polly.merge"</span>);</td></tr>
+<tr><td class="num" id="LN672">672</td><td class="line">  BasicBlock *ThenBB = BasicBlock::Create(Context, <span class='string_literal'>"polly.then"</span>, F);</td></tr>
+<tr><td class="num" id="LN673">673</td><td class="line">  BasicBlock *ElseBB = BasicBlock::Create(Context, <span class='string_literal'>"polly.else"</span>, F);</td></tr>
+<tr><td class="num" id="LN674">674</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN675">675</td><td class="line">  DT.addNewBlock(ThenBB, CondBB);</td></tr>
+<tr><td class="num" id="LN676">676</td><td class="line">  DT.addNewBlock(ElseBB, CondBB);</td></tr>
+<tr><td class="num" id="LN677">677</td><td class="line">  DT.changeImmediateDominator(MergeBB, CondBB);</td></tr>
+<tr><td class="num" id="LN678">678</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN679">679</td><td class="line">  Loop *L = LI.getLoopFor(CondBB);</td></tr>
+<tr><td class="num" id="LN680">680</td><td class="line">  <span class='keyword'>if</span> (L) {</td></tr>
+<tr><td class="num" id="LN681">681</td><td class="line">    L-&gt;addBasicBlockToLoop(ThenBB, LI);</td></tr>
+<tr><td class="num" id="LN682">682</td><td class="line">    L-&gt;addBasicBlockToLoop(ElseBB, LI);</td></tr>
+<tr><td class="num" id="LN683">683</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN684">684</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN685">685</td><td class="line">  CondBB-&gt;getTerminator()-&gt;eraseFromParent();</td></tr>
+<tr><td class="num" id="LN686">686</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN687">687</td><td class="line">  Builder.SetInsertPoint(CondBB);</td></tr>
+<tr><td class="num" id="LN688">688</td><td class="line">  Value *Predicate = ExprBuilder.create(Cond);</td></tr>
+<tr><td class="num" id="LN689">689</td><td class="line">  Builder.CreateCondBr(Predicate, ThenBB, ElseBB);</td></tr>
+<tr><td class="num" id="LN690">690</td><td class="line">  Builder.SetInsertPoint(ThenBB);</td></tr>
+<tr><td class="num" id="LN691">691</td><td class="line">  Builder.CreateBr(MergeBB);</td></tr>
+<tr><td class="num" id="LN692">692</td><td class="line">  Builder.SetInsertPoint(ElseBB);</td></tr>
+<tr><td class="num" id="LN693">693</td><td class="line">  Builder.CreateBr(MergeBB);</td></tr>
+<tr><td class="num" id="LN694">694</td><td class="line">  Builder.SetInsertPoint(&amp;ThenBB-&gt;front());</td></tr>
+<tr><td class="num" id="LN695">695</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN696">696</td><td class="line">  create(isl_ast_node_if_get_then(If));</td></tr>
+<tr><td class="num" id="LN697">697</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN698">698</td><td class="line">  Builder.SetInsertPoint(&amp;ElseBB-&gt;front());</td></tr>
+<tr><td class="num" id="LN699">699</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN700">700</td><td class="line">  <span class='keyword'>if</span> (isl_ast_node_if_has_else(If))</td></tr>
+<tr><td class="num" id="LN701">701</td><td class="line">    create(isl_ast_node_if_get_else(If));</td></tr>
+<tr><td class="num" id="LN702">702</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN703">703</td><td class="line">  Builder.SetInsertPoint(&amp;MergeBB-&gt;front());</td></tr>
+<tr><td class="num" id="LN704">704</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN705">705</td><td class="line">  isl_ast_node_free(If);</td></tr>
+<tr><td class="num" id="LN706">706</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN707">707</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN708">708</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_id_to_ast_expr *</td></tr>
+<tr><td class="num" id="LN709">709</td><td class="line">IslNodeBuilder::createNewAccesses(ScopStmt *Stmt,</td></tr>
+<tr><td class="num" id="LN710">710</td><td class="line">                                  __isl_keep isl_ast_node *Node) {</td></tr>
+<tr><td class="num" id="LN711">711</td><td class="line">  isl_id_to_ast_expr *NewAccesses =</td></tr>
+<tr><td class="num" id="LN712">712</td><td class="line">      isl_id_to_ast_expr_alloc(Stmt-&gt;getParent()-&gt;getIslCtx(), 0);</td></tr>
+<tr><td class="num" id="LN713">713</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN714">714</td><td class="line">  <span class='keyword'>auto</span> *Build = IslAstInfo::getBuild(Node);</td></tr>
+<tr><td class="num" id="LN715">715</td><td class="line">  <span class='macro'>assert(Build &amp;&amp; <span class='string_literal'>"Could not obtain isl_ast_build from user node"</span>)<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN716">716</td><td class="line">  Stmt-&gt;setAstBuild(Build);</td></tr>
+<tr><td class="num" id="LN717">717</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN718">718</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>auto</span> *MA : *Stmt) {</td></tr>
+<tr><td class="num" id="LN719">719</td><td class="line">    <span class='keyword'>if</span> (!MA-&gt;hasNewAccessRelation())</td></tr>
+<tr><td class="num" id="LN720">720</td><td class="line">      <span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN721">721</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN722">722</td><td class="line">    <span class='keyword'>auto</span> Schedule = isl_ast_build_get_schedule(Build);</td></tr>
+<tr><td class="num" id="LN723">723</td><td class="line">    <span class='keyword'>auto</span> PWAccRel = MA-&gt;applyScheduleToAccessRelation(Schedule);</td></tr>
+<tr><td class="num" id="LN724">724</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN725">725</td><td class="line">    <span class='keyword'>auto</span> AccessExpr = isl_ast_build_access_from_pw_multi_aff(Build, PWAccRel);</td></tr>
+<tr><td class="num" id="LN726">726</td><td class="line">    NewAccesses = isl_id_to_ast_expr_set(NewAccesses, MA-&gt;getId(), AccessExpr);</td></tr>
+<tr><td class="num" id="LN727">727</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN728">728</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN729">729</td><td class="line">  <span class='keyword'>return</span> NewAccesses;</td></tr>
+<tr><td class="num" id="LN730">730</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN731">731</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN732">732</td><td class="line"><span class='keyword'>void</span> IslNodeBuilder::createSubstitutions(isl_ast_expr *Expr, ScopStmt *Stmt,</td></tr>
+<tr><td class="num" id="LN733">733</td><td class="line">                                         LoopToScevMapT &amp;LTS) {</td></tr>
+<tr><td class="num" id="LN734">734</td><td class="line">  <span class='macro'>assert(isl_ast_expr_get_type(Expr) == isl_ast_expr_op &amp;&amp;<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span></td></tr>
+<tr><td class="num" id="LN735">735</td><td class="line">         <span class='string_literal'><span class='macro'>"Expression of type 'op' expected"</span>)<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN736">736</td><td class="line">  <span class='macro'>assert(isl_ast_expr_get_op_type(Expr) == isl_ast_op_call &amp;&amp;<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span></td></tr>
+<tr><td class="num" id="LN737">737</td><td class="line">         <span class='string_literal'><span class='macro'>"Opertation of type 'call' expected"</span>)<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN738">738</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>int</span> i = 0; i &lt; isl_ast_expr_get_op_n_arg(Expr) - 1; ++i) {</td></tr>
+<tr><td class="num" id="LN739">739</td><td class="line">    isl_ast_expr *SubExpr;</td></tr>
+<tr><td class="num" id="LN740">740</td><td class="line">    Value *V;</td></tr>
+<tr><td class="num" id="LN741">741</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN742">742</td><td class="line">    SubExpr = isl_ast_expr_get_op_arg(Expr, i + 1);</td></tr>
+<tr><td class="num" id="LN743">743</td><td class="line">    V = ExprBuilder.create(SubExpr);</td></tr>
+<tr><td class="num" id="LN744">744</td><td class="line">    ScalarEvolution *SE = Stmt-&gt;getParent()-&gt;getSE();</td></tr>
+<tr><td class="num" id="LN745">745</td><td class="line">    LTS[Stmt-&gt;getLoopForDimension(i)] = SE-&gt;getUnknown(V);</td></tr>
+<tr><td class="num" id="LN746">746</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN747">747</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN748">748</td><td class="line">  isl_ast_expr_free(Expr);</td></tr>
+<tr><td class="num" id="LN749">749</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN750">750</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN751">751</td><td class="line"><span class='keyword'>void</span> IslNodeBuilder::createSubstitutionsVector(</td></tr>
+<tr><td class="num" id="LN752">752</td><td class="line">    <span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_ast_expr *Expr, ScopStmt *Stmt,</td></tr>
+<tr><td class="num" id="LN753">753</td><td class="line">    std::vector&lt;LoopToScevMapT&gt; &amp;VLTS, std::vector&lt;Value *&gt; &amp;IVS,</td></tr>
+<tr><td class="num" id="LN754">754</td><td class="line">    <span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_id *IteratorID) {</td></tr>
+<tr><td class="num" id="LN755">755</td><td class="line">  <span class='keyword'>int</span> i = 0;</td></tr>
+<tr><td class="num" id="LN756">756</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN757">757</td><td class="line">  Value *OldValue = IDToValue[IteratorID];</td></tr>
+<tr><td class="num" id="LN758">758</td><td class="line">  <span class='keyword'>for</span> (Value *IV : IVS) {</td></tr>
+<tr><td class="num" id="LN759">759</td><td class="line">    IDToValue[IteratorID] = IV;</td></tr>
+<tr><td class="num" id="LN760">760</td><td class="line">    createSubstitutions(isl_ast_expr_copy(Expr), Stmt, VLTS[i]);</td></tr>
+<tr><td class="num" id="LN761">761</td><td class="line">    i++;</td></tr>
+<tr><td class="num" id="LN762">762</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN763">763</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN764">764</td><td class="line">  IDToValue[IteratorID] = OldValue;</td></tr>
+<tr><td class="num" id="LN765">765</td><td class="line">  isl_id_free(IteratorID);</td></tr>
+<tr><td class="num" id="LN766">766</td><td class="line">  isl_ast_expr_free(Expr);</td></tr>
+<tr><td class="num" id="LN767">767</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN768">768</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN769">769</td><td class="line"><span class='keyword'>void</span> IslNodeBuilder::createUser(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_ast_node *User) {</td></tr>
+<tr><td class="num" id="LN770">770</td><td class="line">  LoopToScevMapT LTS;</td></tr>
+<tr><td class="num" id="LN771">771</td><td class="line">  isl_id *Id;</td></tr>
+<tr><td class="num" id="LN772">772</td><td class="line">  ScopStmt *Stmt;</td></tr>
+<tr><td class="num" id="LN773">773</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN774">774</td><td class="line">  isl_ast_expr *Expr = isl_ast_node_user_get_expr(User);</td></tr>
+<tr><td class="num" id="LN775">775</td><td class="line">  isl_ast_expr *StmtExpr = isl_ast_expr_get_op_arg(Expr, 0);</td></tr>
+<tr><td class="num" id="LN776">776</td><td class="line">  Id = isl_ast_expr_get_id(StmtExpr);</td></tr>
+<tr><td class="num" id="LN777">777</td><td class="line">  isl_ast_expr_free(StmtExpr);</td></tr>
+<tr><td class="num" id="LN778">778</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN779">779</td><td class="line">  LTS.insert(OutsideLoopIterations.begin(), OutsideLoopIterations.end());</td></tr>
+<tr><td class="num" id="LN780">780</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN781">781</td><td class="line">  Stmt = (ScopStmt *)isl_id_get_user(Id);</td></tr>
+<tr><td class="num" id="LN782">782</td><td class="line">  <span class='keyword'>auto</span> *NewAccesses = createNewAccesses(Stmt, User);</td></tr>
+<tr><td class="num" id="LN783">783</td><td class="line">  createSubstitutions(Expr, Stmt, LTS);</td></tr>
+<tr><td class="num" id="LN784">784</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN785">785</td><td class="line">  <span class='keyword'>if</span> (Stmt-&gt;isBlockStmt())</td></tr>
+<tr><td class="num" id="LN786">786</td><td class="line">    BlockGen.copyStmt(*Stmt, LTS, NewAccesses);</td></tr>
+<tr><td class="num" id="LN787">787</td><td class="line">  <span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN788">788</td><td class="line">    RegionGen.copyStmt(*Stmt, LTS, NewAccesses);</td></tr>
+<tr><td class="num" id="LN789">789</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN790">790</td><td class="line">  isl_id_to_ast_expr_free(NewAccesses);</td></tr>
+<tr><td class="num" id="LN791">791</td><td class="line">  isl_ast_node_free(User);</td></tr>
+<tr><td class="num" id="LN792">792</td><td class="line">  isl_id_free(Id);</td></tr>
+<tr><td class="num" id="LN793">793</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN794">794</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN795">795</td><td class="line"><span class='keyword'>void</span> IslNodeBuilder::createBlock(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_ast_node *Block) {</td></tr>
+<tr><td class="num" id="LN796">796</td><td class="line">  isl_ast_node_list *List = isl_ast_node_block_get_children(Block);</td></tr>
+<tr><td class="num" id="LN797">797</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN798">798</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>int</span> i = 0; i &lt; isl_ast_node_list_n_ast_node(List); ++i)</td></tr>
+<tr><td class="num" id="LN799">799</td><td class="line">    create(isl_ast_node_list_get_ast_node(List, i));</td></tr>
+<tr><td class="num" id="LN800">800</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN801">801</td><td class="line">  isl_ast_node_free(Block);</td></tr>
+<tr><td class="num" id="LN802">802</td><td class="line">  isl_ast_node_list_free(List);</td></tr>
+<tr><td class="num" id="LN803">803</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN804">804</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN805">805</td><td class="line"><span class='keyword'>void</span> IslNodeBuilder::create(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_ast_node *Node) {</td></tr>
+<tr><td class="num" id="LN806">806</td><td class="line">  <span class='keyword'>switch</span> (isl_ast_node_get_type(Node)) {</td></tr>
+<tr><td class="num" id="LN807">807</td><td class="line">  <span class='keyword'>case</span> isl_ast_node_error:</td></tr>
+<tr><td class="num" id="LN808">808</td><td class="line">    <span class='macro'>llvm_unreachable(<span class='string_literal'>"code generation error"</span>)<span class='expansion'>__builtin_unreachable()</span></span>;</td></tr>
+<tr><td class="num" id="LN809">809</td><td class="line">  <span class='keyword'>case</span> isl_ast_node_mark:</td></tr>
+<tr><td class="num" id="LN810">810</td><td class="line">    createMark(Node);</td></tr>
+<tr><td class="num" id="LN811">811</td><td class="line">    <span class='keyword'>return</span>;</td></tr>
+<tr><td class="num" id="LN812">812</td><td class="line">  <span class='keyword'>case</span> isl_ast_node_for:</td></tr>
+<tr><td class="num" id="LN813">813</td><td class="line">    createFor(Node);</td></tr>
+<tr><td class="num" id="LN814">814</td><td class="line">    <span class='keyword'>return</span>;</td></tr>
+<tr><td class="num" id="LN815">815</td><td class="line">  <span class='keyword'>case</span> isl_ast_node_if:</td></tr>
+<tr><td class="num" id="LN816">816</td><td class="line">    createIf(Node);</td></tr>
+<tr><td class="num" id="LN817">817</td><td class="line">    <span class='keyword'>return</span>;</td></tr>
+<tr><td class="num" id="LN818">818</td><td class="line">  <span class='keyword'>case</span> isl_ast_node_user:</td></tr>
+<tr><td class="num" id="LN819">819</td><td class="line">    createUser(Node);</td></tr>
+<tr><td class="num" id="LN820">820</td><td class="line">    <span class='keyword'>return</span>;</td></tr>
+<tr><td class="num" id="LN821">821</td><td class="line">  <span class='keyword'>case</span> isl_ast_node_block:</td></tr>
+<tr><td class="num" id="LN822">822</td><td class="line">    createBlock(Node);</td></tr>
+<tr><td class="num" id="LN823">823</td><td class="line">    <span class='keyword'>return</span>;</td></tr>
+<tr><td class="num" id="LN824">824</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN825">825</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN826">826</td><td class="line">  <span class='macro'>llvm_unreachable(<span class='string_literal'>"Unknown isl_ast_node type"</span>)<span class='expansion'>__builtin_unreachable()</span></span>;</td></tr>
+<tr><td class="num" id="LN827">827</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN828">828</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN829">829</td><td class="line"><span class='keyword'>bool</span> IslNodeBuilder::materializeValue(isl_id *Id) {</td></tr>
+<tr><td class="num" id="LN830">830</td><td class="line">  <span class='comment'>// If the Id is already mapped, skip it.</span></td></tr>
+<tr><td class="num" id="LN831">831</td><td class="line">  <span class='keyword'>if</span> (!IDToValue.count(Id)) {</td></tr>
+<tr><td class="num" id="LN832">832</td><td class="line">    <span class='keyword'>auto</span> *ParamSCEV = (<span class='keyword'>const</span> SCEV *)isl_id_get_user(Id);</td></tr>
+<tr><td class="num" id="LN833">833</td><td class="line">    Value *V = <span class='keyword'>nullptr</span>;</td></tr>
+<tr><td class="num" id="LN834">834</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN835">835</td><td class="line">    <span class='comment'>// Parameters could refere to invariant loads that need to be</span></td></tr>
+<tr><td class="num" id="LN836">836</td><td class="line">    <span class='comment'>// preloaded before we can generate code for the parameter. Thus,</span></td></tr>
+<tr><td class="num" id="LN837">837</td><td class="line">    <span class='comment'>// check if any value refered to in ParamSCEV is an invariant load</span></td></tr>
+<tr><td class="num" id="LN838">838</td><td class="line">    <span class='comment'>// and if so make sure its equivalence class is preloaded.</span></td></tr>
+<tr><td class="num" id="LN839">839</td><td class="line">    SetVector&lt;Value *&gt; Values;</td></tr>
+<tr><td class="num" id="LN840">840</td><td class="line">    findValues(ParamSCEV, SE, Values);</td></tr>
+<tr><td class="num" id="LN841">841</td><td class="line">    <span class='keyword'>for</span> (<span class='keyword'>auto</span> *Val : Values) {</td></tr>
+<tr><td class="num" id="LN842">842</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN843">843</td><td class="line">      <span class='comment'>// Check if the value is an instruction in a dead block within the SCoP</span></td></tr>
+<tr><td class="num" id="LN844">844</td><td class="line">      <span class='comment'>// and if so do not code generate it.</span></td></tr>
+<tr><td class="num" id="LN845">845</td><td class="line">      <span class='keyword'>if</span> (<span class='keyword'>auto</span> *Inst = dyn_cast&lt;Instruction&gt;(Val)) {</td></tr>
+<tr><td class="num" id="LN846">846</td><td class="line">        <span class='keyword'>if</span> (S.contains(Inst)) {</td></tr>
+<tr><td class="num" id="LN847">847</td><td class="line">          <span class='keyword'>bool</span> IsDead = <span class='keyword'>true</span>;</td></tr>
+<tr><td class="num" id="LN848">848</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN849">849</td><td class="line">          <span class='comment'>// Check for "undef" loads first, then if there is a statement for</span></td></tr>
+<tr><td class="num" id="LN850">850</td><td class="line">          <span class='comment'>// the parent of Inst and lastly if the parent of Inst has an empty</span></td></tr>
+<tr><td class="num" id="LN851">851</td><td class="line">          <span class='comment'>// domain. In the first and last case the instruction is dead but if</span></td></tr>
+<tr><td class="num" id="LN852">852</td><td class="line">          <span class='comment'>// there is a statement or the domain is not empty Inst is not dead.</span></td></tr>
+<tr><td class="num" id="LN853">853</td><td class="line">          <span class='keyword'>auto</span> MemInst = MemAccInst::dyn_cast(Inst);</td></tr>
+<tr><td class="num" id="LN854">854</td><td class="line">          <span class='keyword'>auto</span> Address = MemInst ? MemInst.getPointerOperand() : <span class='keyword'>nullptr</span>;</td></tr>
+<tr><td class="num" id="LN855">855</td><td class="line">          <span class='keyword'>if</span> (Address &amp;&amp;</td></tr>
+<tr><td class="num" id="LN856">856</td><td class="line">              SE.getUnknown(UndefValue::get(Address-&gt;getType())) ==</td></tr>
+<tr><td class="num" id="LN857">857</td><td class="line">                  SE.getPointerBase(SE.getSCEV(Address))) {</td></tr>
+<tr><td class="num" id="LN858">858</td><td class="line">          } <span class='keyword'>else</span> <span class='keyword'>if</span> (S.getStmtFor(Inst)) {</td></tr>
+<tr><td class="num" id="LN859">859</td><td class="line">            IsDead = <span class='keyword'>false</span>;</td></tr>
+<tr><td class="num" id="LN860">860</td><td class="line">          } <span class='keyword'>else</span> {</td></tr>
+<tr><td class="num" id="LN861">861</td><td class="line">            <span class='keyword'>auto</span> *Domain = S.getDomainConditions(Inst-&gt;getParent());</td></tr>
+<tr><td class="num" id="LN862">862</td><td class="line">            IsDead = isl_set_is_empty(Domain);</td></tr>
+<tr><td class="num" id="LN863">863</td><td class="line">            isl_set_free(Domain);</td></tr>
+<tr><td class="num" id="LN864">864</td><td class="line">          }</td></tr>
+<tr><td class="num" id="LN865">865</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN866">866</td><td class="line">          <span class='keyword'>if</span> (IsDead) {</td></tr>
+<tr><td class="num" id="LN867">867</td><td class="line">            V = UndefValue::get(ParamSCEV-&gt;getType());</td></tr>
+<tr><td class="num" id="LN868">868</td><td class="line">            <span class='keyword'>break</span>;</td></tr>
+<tr><td class="num" id="LN869">869</td><td class="line">          }</td></tr>
+<tr><td class="num" id="LN870">870</td><td class="line">        }</td></tr>
+<tr><td class="num" id="LN871">871</td><td class="line">      }</td></tr>
+<tr><td class="num" id="LN872">872</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN873">873</td><td class="line">      <span class='keyword'>if</span> (<span class='keyword'>auto</span> *IAClass = S.lookupInvariantEquivClass(Val)) {</td></tr>
+<tr><td class="num" id="LN874">874</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN875">875</td><td class="line">        <span class='comment'>// Check if this invariant access class is empty, hence if we never</span></td></tr>
+<tr><td class="num" id="LN876">876</td><td class="line">        <span class='comment'>// actually added a loads instruction to it. In that case it has no</span></td></tr>
+<tr><td class="num" id="LN877">877</td><td class="line">        <span class='comment'>// (meaningful) users and we should not try to code generate it.</span></td></tr>
+<tr><td class="num" id="LN878">878</td><td class="line">        <span class='keyword'>if</span> (IAClass-&gt;InvariantAccesses.empty())</td></tr>
+<tr><td class="num" id="LN879">879</td><td class="line">          V = UndefValue::get(ParamSCEV-&gt;getType());</td></tr>
+<tr><td class="num" id="LN880">880</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN881">881</td><td class="line">        <span class='keyword'>if</span> (!preloadInvariantEquivClass(*IAClass)) {</td></tr>
+<tr><td class="num" id="LN882">882</td><td class="line">          isl_id_free(Id);</td></tr>
+<tr><td class="num" id="LN883">883</td><td class="line">          <span class='keyword'>return</span> <span class='keyword'>false</span>;</td></tr>
+<tr><td class="num" id="LN884">884</td><td class="line">        }</td></tr>
+<tr><td class="num" id="LN885">885</td><td class="line">      }</td></tr>
+<tr><td class="num" id="LN886">886</td><td class="line">    }</td></tr>
+<tr><td class="num" id="LN887">887</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN888">888</td><td class="line">    V = V ? V : generateSCEV(ParamSCEV);</td></tr>
+<tr><td class="num" id="LN889">889</td><td class="line">    IDToValue[Id] = V;</td></tr>
+<tr><td class="num" id="LN890">890</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN891">891</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN892">892</td><td class="line">  isl_id_free(Id);</td></tr>
+<tr><td class="num" id="LN893">893</td><td class="line">  <span class='keyword'>return</span> <span class='keyword'>true</span>;</td></tr>
+<tr><td class="num" id="LN894">894</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN895">895</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN896">896</td><td class="line"><span class='keyword'>bool</span> IslNodeBuilder::materializeParameters(isl_set *Set, <span class='keyword'>bool</span> All) {</td></tr>
+<tr><td class="num" id="LN897">897</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>unsigned</span> i = 0, e = isl_set_dim(Set, isl_dim_param); i &lt; e; ++i) {</td></tr>
+<tr><td class="num" id="LN898">898</td><td class="line">    <span class='keyword'>if</span> (!All &amp;&amp; !isl_set_involves_dims(Set, isl_dim_param, i, 1))</td></tr>
+<tr><td class="num" id="LN899">899</td><td class="line">      <span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN900">900</td><td class="line">    isl_id *Id = isl_set_get_dim_id(Set, isl_dim_param, i);</td></tr>
+<tr><td class="num" id="LN901">901</td><td class="line">    <span class='keyword'>if</span> (!materializeValue(Id))</td></tr>
+<tr><td class="num" id="LN902">902</td><td class="line">      <span class='keyword'>return</span> <span class='keyword'>false</span>;</td></tr>
+<tr><td class="num" id="LN903">903</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN904">904</td><td class="line">  <span class='keyword'>return</span> <span class='keyword'>true</span>;</td></tr>
+<tr><td class="num" id="LN905">905</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN906">906</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN907">907</td><td class="line"><span class='comment'>/// Add the number of dimensions in @p BS to @p U.</span></td></tr>
+<tr><td class="num" id="LN908">908</td><td class="line"><span class='keyword'>static</span> isl_stat countTotalDims(isl_basic_set *BS, <span class='keyword'>void</span> *U) {</td></tr>
+<tr><td class="num" id="LN909">909</td><td class="line">  <span class='keyword'>unsigned</span> *NumTotalDim = <span class='keyword'>static_cast</span>&lt;<span class='keyword'>unsigned</span> *&gt;(U);</td></tr>
+<tr><td class="num" id="LN910">910</td><td class="line">  *NumTotalDim += isl_basic_set_total_dim(BS);</td></tr>
+<tr><td class="num" id="LN911">911</td><td class="line">  isl_basic_set_free(<span class="mrange">BS</span>);</td></tr>
+<tr><td class="num"></td><td class="line"><div id="EndPath" class="msg msgEvent" style="margin-left:3ex">Incorrect decrement of the reference count of an object that is not owned at this point by the caller</div></td></tr>
+<tr><td class="num" id="LN912">912</td><td class="line">  <span class='keyword'>return</span> isl_stat_ok;</td></tr>
+<tr><td class="num" id="LN913">913</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN914">914</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN915">915</td><td class="line">Value *IslNodeBuilder::preloadUnconditionally(isl_set *AccessRange,</td></tr>
+<tr><td class="num" id="LN916">916</td><td class="line">                                              isl_ast_build *Build,</td></tr>
+<tr><td class="num" id="LN917">917</td><td class="line">                                              Instruction *AccInst) {</td></tr>
+<tr><td class="num" id="LN918">918</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN919">919</td><td class="line">  <span class='comment'>// TODO: This check could be performed in the ScopInfo already.</span></td></tr>
+<tr><td class="num" id="LN920">920</td><td class="line">  <span class='keyword'>unsigned</span> NumTotalDim = 0;</td></tr>
+<tr><td class="num" id="LN921">921</td><td class="line">  isl_set_foreach_basic_set(AccessRange, countTotalDims, &amp;NumTotalDim);</td></tr>
+<tr><td class="num" id="LN922">922</td><td class="line">  <span class='keyword'>if</span> (NumTotalDim &gt; MaxDimensionsInAccessRange) {</td></tr>
+<tr><td class="num" id="LN923">923</td><td class="line">    isl_set_free(AccessRange);</td></tr>
+<tr><td class="num" id="LN924">924</td><td class="line">    <span class='keyword'>return</span> <span class='keyword'>nullptr</span>;</td></tr>
+<tr><td class="num" id="LN925">925</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN926">926</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN927">927</td><td class="line">  isl_pw_multi_aff *PWAccRel = isl_pw_multi_aff_from_set(AccessRange);</td></tr>
+<tr><td class="num" id="LN928">928</td><td class="line">  isl_ast_expr *Access =</td></tr>
+<tr><td class="num" id="LN929">929</td><td class="line">      isl_ast_build_access_from_pw_multi_aff(Build, PWAccRel);</td></tr>
+<tr><td class="num" id="LN930">930</td><td class="line">  <span class='keyword'>auto</span> *Address = isl_ast_expr_address_of(Access);</td></tr>
+<tr><td class="num" id="LN931">931</td><td class="line">  <span class='keyword'>auto</span> *AddressValue = ExprBuilder.create(Address);</td></tr>
+<tr><td class="num" id="LN932">932</td><td class="line">  Value *PreloadVal;</td></tr>
+<tr><td class="num" id="LN933">933</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN934">934</td><td class="line">  <span class='comment'>// Correct the type as the SAI might have a different type than the user</span></td></tr>
+<tr><td class="num" id="LN935">935</td><td class="line">  <span class='comment'>// expects, especially if the base pointer is a struct.</span></td></tr>
+<tr><td class="num" id="LN936">936</td><td class="line">  Type *Ty = AccInst-&gt;getType();</td></tr>
+<tr><td class="num" id="LN937">937</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN938">938</td><td class="line">  <span class='keyword'>auto</span> *Ptr = AddressValue;</td></tr>
+<tr><td class="num" id="LN939">939</td><td class="line">  <span class='keyword'>auto</span> Name = Ptr-&gt;getName();</td></tr>
+<tr><td class="num" id="LN940">940</td><td class="line">  Ptr = Builder.CreatePointerCast(Ptr, Ty-&gt;getPointerTo(), Name + <span class='string_literal'>".cast"</span>);</td></tr>
+<tr><td class="num" id="LN941">941</td><td class="line">  PreloadVal = Builder.CreateLoad(Ptr, Name + <span class='string_literal'>".load"</span>);</td></tr>
+<tr><td class="num" id="LN942">942</td><td class="line">  <span class='keyword'>if</span> (LoadInst *PreloadInst = dyn_cast&lt;LoadInst&gt;(PreloadVal))</td></tr>
+<tr><td class="num" id="LN943">943</td><td class="line">    PreloadInst-&gt;setAlignment(dyn_cast&lt;LoadInst&gt;(AccInst)-&gt;getAlignment());</td></tr>
+<tr><td class="num" id="LN944">944</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN945">945</td><td class="line">  <span class='comment'>// TODO: This is only a hot fix for SCoP sequences that use the same load</span></td></tr>
+<tr><td class="num" id="LN946">946</td><td class="line">  <span class='comment'>//       instruction contained and hoisted by one of the SCoPs.</span></td></tr>
+<tr><td class="num" id="LN947">947</td><td class="line">  <span class='keyword'>if</span> (SE.isSCEVable(Ty))</td></tr>
+<tr><td class="num" id="LN948">948</td><td class="line">    SE.forgetValue(AccInst);</td></tr>
+<tr><td class="num" id="LN949">949</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN950">950</td><td class="line">  <span class='keyword'>return</span> PreloadVal;</td></tr>
+<tr><td class="num" id="LN951">951</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN952">952</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN953">953</td><td class="line">Value *IslNodeBuilder::preloadInvariantLoad(<span class='keyword'>const</span> MemoryAccess &amp;MA,</td></tr>
+<tr><td class="num" id="LN954">954</td><td class="line">                                            isl_set *Domain) {</td></tr>
+<tr><td class="num" id="LN955">955</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN956">956</td><td class="line">  isl_set *AccessRange = isl_map_range(MA.getAddressFunction());</td></tr>
+<tr><td class="num" id="LN957">957</td><td class="line">  AccessRange = isl_set_gist_params(AccessRange, S.getContext());</td></tr>
+<tr><td class="num" id="LN958">958</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN959">959</td><td class="line">  <span class='keyword'>if</span> (!materializeParameters(AccessRange, <span class='keyword'>false</span>)) {</td></tr>
+<tr><td class="num" id="LN960">960</td><td class="line">    isl_set_free(AccessRange);</td></tr>
+<tr><td class="num" id="LN961">961</td><td class="line">    isl_set_free(Domain);</td></tr>
+<tr><td class="num" id="LN962">962</td><td class="line">    <span class='keyword'>return</span> <span class='keyword'>nullptr</span>;</td></tr>
+<tr><td class="num" id="LN963">963</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN964">964</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN965">965</td><td class="line">  <span class='keyword'>auto</span> *Build = isl_ast_build_from_context(isl_set_universe(S.getParamSpace()));</td></tr>
+<tr><td class="num" id="LN966">966</td><td class="line">  isl_set *Universe = isl_set_universe(isl_set_get_space(Domain));</td></tr>
+<tr><td class="num" id="LN967">967</td><td class="line">  <span class='keyword'>bool</span> AlwaysExecuted = isl_set_is_equal(Domain, Universe);</td></tr>
+<tr><td class="num" id="LN968">968</td><td class="line">  isl_set_free(Universe);</td></tr>
+<tr><td class="num" id="LN969">969</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN970">970</td><td class="line">  Instruction *AccInst = MA.getAccessInstruction();</td></tr>
+<tr><td class="num" id="LN971">971</td><td class="line">  Type *AccInstTy = AccInst-&gt;getType();</td></tr>
+<tr><td class="num" id="LN972">972</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN973">973</td><td class="line">  Value *PreloadVal = <span class='keyword'>nullptr</span>;</td></tr>
+<tr><td class="num" id="LN974">974</td><td class="line">  <span class='keyword'>if</span> (AlwaysExecuted) {</td></tr>
+<tr><td class="num" id="LN975">975</td><td class="line">    PreloadVal = preloadUnconditionally(AccessRange, Build, AccInst);</td></tr>
+<tr><td class="num" id="LN976">976</td><td class="line">    isl_ast_build_free(Build);</td></tr>
+<tr><td class="num" id="LN977">977</td><td class="line">    isl_set_free(Domain);</td></tr>
+<tr><td class="num" id="LN978">978</td><td class="line">    <span class='keyword'>return</span> PreloadVal;</td></tr>
+<tr><td class="num" id="LN979">979</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN980">980</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN981">981</td><td class="line">  <span class='keyword'>if</span> (!materializeParameters(Domain, <span class='keyword'>false</span>)) {</td></tr>
+<tr><td class="num" id="LN982">982</td><td class="line">    isl_ast_build_free(Build);</td></tr>
+<tr><td class="num" id="LN983">983</td><td class="line">    isl_set_free(AccessRange);</td></tr>
+<tr><td class="num" id="LN984">984</td><td class="line">    isl_set_free(Domain);</td></tr>
+<tr><td class="num" id="LN985">985</td><td class="line">    <span class='keyword'>return</span> <span class='keyword'>nullptr</span>;</td></tr>
+<tr><td class="num" id="LN986">986</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN987">987</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN988">988</td><td class="line">  isl_ast_expr *DomainCond = isl_ast_build_expr_from_set(Build, Domain);</td></tr>
+<tr><td class="num" id="LN989">989</td><td class="line">  Domain = <span class='keyword'>nullptr</span>;</td></tr>
+<tr><td class="num" id="LN990">990</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN991">991</td><td class="line">  ExprBuilder.setTrackOverflow(<span class='keyword'>true</span>);</td></tr>
+<tr><td class="num" id="LN992">992</td><td class="line">  Value *Cond = ExprBuilder.create(DomainCond);</td></tr>
+<tr><td class="num" id="LN993">993</td><td class="line">  Value *OverflowHappened = Builder.CreateNot(ExprBuilder.getOverflowState(),</td></tr>
+<tr><td class="num" id="LN994">994</td><td class="line">                                              <span class='string_literal'>"polly.preload.cond.overflown"</span>);</td></tr>
+<tr><td class="num" id="LN995">995</td><td class="line">  Cond = Builder.CreateAnd(Cond, OverflowHappened, <span class='string_literal'>"polly.preload.cond.result"</span>);</td></tr>
+<tr><td class="num" id="LN996">996</td><td class="line">  ExprBuilder.setTrackOverflow(<span class='keyword'>false</span>);</td></tr>
+<tr><td class="num" id="LN997">997</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN998">998</td><td class="line">  <span class='keyword'>if</span> (!Cond-&gt;getType()-&gt;isIntegerTy(1))</td></tr>
+<tr><td class="num" id="LN999">999</td><td class="line">    Cond = Builder.CreateIsNotNull(Cond);</td></tr>
+<tr><td class="num" id="LN1000">1000</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1001">1001</td><td class="line">  BasicBlock *CondBB = SplitBlock(Builder.GetInsertBlock(),</td></tr>
+<tr><td class="num" id="LN1002">1002</td><td class="line">                                  &amp;*Builder.GetInsertPoint(), &amp;DT, &amp;LI);</td></tr>
+<tr><td class="num" id="LN1003">1003</td><td class="line">  CondBB-&gt;setName(<span class='string_literal'>"polly.preload.cond"</span>);</td></tr>
+<tr><td class="num" id="LN1004">1004</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1005">1005</td><td class="line">  BasicBlock *MergeBB = SplitBlock(CondBB, &amp;CondBB-&gt;front(), &amp;DT, &amp;LI);</td></tr>
+<tr><td class="num" id="LN1006">1006</td><td class="line">  MergeBB-&gt;setName(<span class='string_literal'>"polly.preload.merge"</span>);</td></tr>
+<tr><td class="num" id="LN1007">1007</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1008">1008</td><td class="line">  Function *F = Builder.GetInsertBlock()-&gt;getParent();</td></tr>
+<tr><td class="num" id="LN1009">1009</td><td class="line">  LLVMContext &amp;Context = F-&gt;getContext();</td></tr>
+<tr><td class="num" id="LN1010">1010</td><td class="line">  BasicBlock *ExecBB = BasicBlock::Create(Context, <span class='string_literal'>"polly.preload.exec"</span>, F);</td></tr>
+<tr><td class="num" id="LN1011">1011</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1012">1012</td><td class="line">  DT.addNewBlock(ExecBB, CondBB);</td></tr>
+<tr><td class="num" id="LN1013">1013</td><td class="line">  <span class='keyword'>if</span> (Loop *L = LI.getLoopFor(CondBB))</td></tr>
+<tr><td class="num" id="LN1014">1014</td><td class="line">    L-&gt;addBasicBlockToLoop(ExecBB, LI);</td></tr>
+<tr><td class="num" id="LN1015">1015</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1016">1016</td><td class="line">  <span class='keyword'>auto</span> *CondBBTerminator = CondBB-&gt;getTerminator();</td></tr>
+<tr><td class="num" id="LN1017">1017</td><td class="line">  Builder.SetInsertPoint(CondBBTerminator);</td></tr>
+<tr><td class="num" id="LN1018">1018</td><td class="line">  Builder.CreateCondBr(Cond, ExecBB, MergeBB);</td></tr>
+<tr><td class="num" id="LN1019">1019</td><td class="line">  CondBBTerminator-&gt;eraseFromParent();</td></tr>
+<tr><td class="num" id="LN1020">1020</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1021">1021</td><td class="line">  Builder.SetInsertPoint(ExecBB);</td></tr>
+<tr><td class="num" id="LN1022">1022</td><td class="line">  Builder.CreateBr(MergeBB);</td></tr>
+<tr><td class="num" id="LN1023">1023</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1024">1024</td><td class="line">  Builder.SetInsertPoint(ExecBB-&gt;getTerminator());</td></tr>
+<tr><td class="num" id="LN1025">1025</td><td class="line">  Value *PreAccInst = preloadUnconditionally(AccessRange, Build, AccInst);</td></tr>
+<tr><td class="num" id="LN1026">1026</td><td class="line">  Builder.SetInsertPoint(MergeBB-&gt;getTerminator());</td></tr>
+<tr><td class="num" id="LN1027">1027</td><td class="line">  <span class='keyword'>auto</span> *MergePHI = Builder.CreatePHI(</td></tr>
+<tr><td class="num" id="LN1028">1028</td><td class="line">      AccInstTy, 2, <span class='string_literal'>"polly.preload."</span> + AccInst-&gt;getName() + <span class='string_literal'>".merge"</span>);</td></tr>
+<tr><td class="num" id="LN1029">1029</td><td class="line">  PreloadVal = MergePHI;</td></tr>
+<tr><td class="num" id="LN1030">1030</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1031">1031</td><td class="line">  <span class='keyword'>if</span> (!PreAccInst) {</td></tr>
+<tr><td class="num" id="LN1032">1032</td><td class="line">    PreloadVal = <span class='keyword'>nullptr</span>;</td></tr>
+<tr><td class="num" id="LN1033">1033</td><td class="line">    PreAccInst = UndefValue::get(AccInstTy);</td></tr>
+<tr><td class="num" id="LN1034">1034</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN1035">1035</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1036">1036</td><td class="line">  MergePHI-&gt;addIncoming(PreAccInst, ExecBB);</td></tr>
+<tr><td class="num" id="LN1037">1037</td><td class="line">  MergePHI-&gt;addIncoming(Constant::getNullValue(AccInstTy), CondBB);</td></tr>
+<tr><td class="num" id="LN1038">1038</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1039">1039</td><td class="line">  isl_ast_build_free(Build);</td></tr>
+<tr><td class="num" id="LN1040">1040</td><td class="line">  <span class='keyword'>return</span> PreloadVal;</td></tr>
+<tr><td class="num" id="LN1041">1041</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1042">1042</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1043">1043</td><td class="line"><span class='keyword'>bool</span> IslNodeBuilder::preloadInvariantEquivClass(</td></tr>
+<tr><td class="num" id="LN1044">1044</td><td class="line">    InvariantEquivClassTy &amp;IAClass) {</td></tr>
+<tr><td class="num" id="LN1045">1045</td><td class="line">  <span class='comment'>// For an equivalence class of invariant loads we pre-load the representing</span></td></tr>
+<tr><td class="num" id="LN1046">1046</td><td class="line">  <span class='comment'>// element with the unified execution context. However, we have to map all</span></td></tr>
+<tr><td class="num" id="LN1047">1047</td><td class="line">  <span class='comment'>// elements of the class to the one preloaded load as they are referenced</span></td></tr>
+<tr><td class="num" id="LN1048">1048</td><td class="line">  <span class='comment'>// during the code generation and therefor need to be mapped.</span></td></tr>
+<tr><td class="num" id="LN1049">1049</td><td class="line">  <span class='keyword'>const</span> MemoryAccessList &amp;MAs = IAClass.InvariantAccesses;</td></tr>
+<tr><td class="num" id="LN1050">1050</td><td class="line">  <span class='keyword'>if</span> (MAs.empty())</td></tr>
+<tr><td class="num" id="LN1051">1051</td><td class="line">    <span class='keyword'>return</span> <span class='keyword'>true</span>;</td></tr>
+<tr><td class="num" id="LN1052">1052</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1053">1053</td><td class="line">  MemoryAccess *MA = MAs.front();</td></tr>
+<tr><td class="num" id="LN1054">1054</td><td class="line">  <span class='macro'>assert(MA-&gt;isArrayKind() &amp;&amp; MA-&gt;isRead())<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN1055">1055</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1056">1056</td><td class="line">  <span class='comment'>// If the access function was already mapped, the preload of this equivalence</span></td></tr>
+<tr><td class="num" id="LN1057">1057</td><td class="line">  <span class='comment'>// class was triggered earlier already and doesn't need to be done again.</span></td></tr>
+<tr><td class="num" id="LN1058">1058</td><td class="line">  <span class='keyword'>if</span> (ValueMap.count(MA-&gt;getAccessInstruction()))</td></tr>
+<tr><td class="num" id="LN1059">1059</td><td class="line">    <span class='keyword'>return</span> <span class='keyword'>true</span>;</td></tr>
+<tr><td class="num" id="LN1060">1060</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1061">1061</td><td class="line">  <span class='comment'>// Check for recursion which can be caused by additional constraints, e.g.,</span></td></tr>
+<tr><td class="num" id="LN1062">1062</td><td class="line">  <span class='comment'>// non-finite loop constraints. In such a case we have to bail out and insert</span></td></tr>
+<tr><td class="num" id="LN1063">1063</td><td class="line">  <span class='comment'>// a "false" runtime check that will cause the original code to be executed.</span></td></tr>
+<tr><td class="num" id="LN1064">1064</td><td class="line">  <span class='keyword'>auto</span> PtrId = std::make_pair(IAClass.IdentifyingPointer, IAClass.AccessType);</td></tr>
+<tr><td class="num" id="LN1065">1065</td><td class="line">  <span class='keyword'>if</span> (!PreloadedPtrs.insert(PtrId).second)</td></tr>
+<tr><td class="num" id="LN1066">1066</td><td class="line">    <span class='keyword'>return</span> <span class='keyword'>false</span>;</td></tr>
+<tr><td class="num" id="LN1067">1067</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1068">1068</td><td class="line">  <span class='comment'>// The execution context of the IAClass.</span></td></tr>
+<tr><td class="num" id="LN1069">1069</td><td class="line">  isl_set *&amp;ExecutionCtx = IAClass.ExecutionContext;</td></tr>
+<tr><td class="num" id="LN1070">1070</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1071">1071</td><td class="line">  <span class='comment'>// If the base pointer of this class is dependent on another one we have to</span></td></tr>
+<tr><td class="num" id="LN1072">1072</td><td class="line">  <span class='comment'>// make sure it was preloaded already.</span></td></tr>
+<tr><td class="num" id="LN1073">1073</td><td class="line">  <span class='keyword'>auto</span> *SAI = MA-&gt;getScopArrayInfo();</td></tr>
+<tr><td class="num" id="LN1074">1074</td><td class="line">  <span class='keyword'>if</span> (<span class='keyword'>auto</span> *BaseIAClass = S.lookupInvariantEquivClass(SAI-&gt;getBasePtr())) {</td></tr>
+<tr><td class="num" id="LN1075">1075</td><td class="line">    <span class='keyword'>if</span> (!preloadInvariantEquivClass(*BaseIAClass))</td></tr>
+<tr><td class="num" id="LN1076">1076</td><td class="line">      <span class='keyword'>return</span> <span class='keyword'>false</span>;</td></tr>
+<tr><td class="num" id="LN1077">1077</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1078">1078</td><td class="line">    <span class='comment'>// After we preloaded the BaseIAClass we adjusted the BaseExecutionCtx and</span></td></tr>
+<tr><td class="num" id="LN1079">1079</td><td class="line">    <span class='comment'>// we need to refine the ExecutionCtx.</span></td></tr>
+<tr><td class="num" id="LN1080">1080</td><td class="line">    isl_set *BaseExecutionCtx = isl_set_copy(BaseIAClass-&gt;ExecutionContext);</td></tr>
+<tr><td class="num" id="LN1081">1081</td><td class="line">    ExecutionCtx = isl_set_intersect(ExecutionCtx, BaseExecutionCtx);</td></tr>
+<tr><td class="num" id="LN1082">1082</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN1083">1083</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1084">1084</td><td class="line">  Instruction *AccInst = MA-&gt;getAccessInstruction();</td></tr>
+<tr><td class="num" id="LN1085">1085</td><td class="line">  Type *AccInstTy = AccInst-&gt;getType();</td></tr>
+<tr><td class="num" id="LN1086">1086</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1087">1087</td><td class="line">  Value *PreloadVal = preloadInvariantLoad(*MA, isl_set_copy(ExecutionCtx));</td></tr>
+<tr><td class="num" id="LN1088">1088</td><td class="line">  <span class='keyword'>if</span> (!PreloadVal)</td></tr>
+<tr><td class="num" id="LN1089">1089</td><td class="line">    <span class='keyword'>return</span> <span class='keyword'>false</span>;</td></tr>
+<tr><td class="num" id="LN1090">1090</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1091">1091</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>const</span> MemoryAccess *MA : MAs) {</td></tr>
+<tr><td class="num" id="LN1092">1092</td><td class="line">    Instruction *MAAccInst = MA-&gt;getAccessInstruction();</td></tr>
+<tr><td class="num" id="LN1093">1093</td><td class="line">    <span class='macro'>assert(PreloadVal-&gt;getType() == MAAccInst-&gt;getType())<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN1094">1094</td><td class="line">    ValueMap[MAAccInst] = PreloadVal;</td></tr>
+<tr><td class="num" id="LN1095">1095</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN1096">1096</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1097">1097</td><td class="line">  <span class='keyword'>if</span> (SE.isSCEVable(AccInstTy)) {</td></tr>
+<tr><td class="num" id="LN1098">1098</td><td class="line">    isl_id *ParamId = S.getIdForParam(SE.getSCEV(AccInst));</td></tr>
+<tr><td class="num" id="LN1099">1099</td><td class="line">    <span class='keyword'>if</span> (ParamId)</td></tr>
+<tr><td class="num" id="LN1100">1100</td><td class="line">      IDToValue[ParamId] = PreloadVal;</td></tr>
+<tr><td class="num" id="LN1101">1101</td><td class="line">    isl_id_free(ParamId);</td></tr>
+<tr><td class="num" id="LN1102">1102</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN1103">1103</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1104">1104</td><td class="line">  BasicBlock *EntryBB = &amp;Builder.GetInsertBlock()-&gt;getParent()-&gt;getEntryBlock();</td></tr>
+<tr><td class="num" id="LN1105">1105</td><td class="line">  <span class='keyword'>auto</span> *Alloca = <span class='keyword'>new</span> AllocaInst(AccInstTy, AccInst-&gt;getName() + <span class='string_literal'>".preload.s2a"</span>);</td></tr>
+<tr><td class="num" id="LN1106">1106</td><td class="line">  Alloca-&gt;insertBefore(&amp;*EntryBB-&gt;getFirstInsertionPt());</td></tr>
+<tr><td class="num" id="LN1107">1107</td><td class="line">  Builder.CreateStore(PreloadVal, Alloca);</td></tr>
+<tr><td class="num" id="LN1108">1108</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1109">1109</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>auto</span> *DerivedSAI : SAI-&gt;getDerivedSAIs()) {</td></tr>
+<tr><td class="num" id="LN1110">1110</td><td class="line">    Value *BasePtr = DerivedSAI-&gt;getBasePtr();</td></tr>
+<tr><td class="num" id="LN1111">1111</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1112">1112</td><td class="line">    <span class='keyword'>for</span> (<span class='keyword'>const</span> MemoryAccess *MA : MAs) {</td></tr>
+<tr><td class="num" id="LN1113">1113</td><td class="line">      <span class='comment'>// As the derived SAI information is quite coarse, any load from the</span></td></tr>
+<tr><td class="num" id="LN1114">1114</td><td class="line">      <span class='comment'>// current SAI could be the base pointer of the derived SAI, however we</span></td></tr>
+<tr><td class="num" id="LN1115">1115</td><td class="line">      <span class='comment'>// should only change the base pointer of the derived SAI if we actually</span></td></tr>
+<tr><td class="num" id="LN1116">1116</td><td class="line">      <span class='comment'>// preloaded it.</span></td></tr>
+<tr><td class="num" id="LN1117">1117</td><td class="line">      <span class='keyword'>if</span> (BasePtr == MA-&gt;getBaseAddr()) {</td></tr>
+<tr><td class="num" id="LN1118">1118</td><td class="line">        <span class='macro'>assert(BasePtr-&gt;getType() == PreloadVal-&gt;getType())<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN1119">1119</td><td class="line">        DerivedSAI-&gt;setBasePtr(PreloadVal);</td></tr>
+<tr><td class="num" id="LN1120">1120</td><td class="line">      }</td></tr>
+<tr><td class="num" id="LN1121">1121</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1122">1122</td><td class="line">      <span class='comment'>// For scalar derived SAIs we remap the alloca used for the derived value.</span></td></tr>
+<tr><td class="num" id="LN1123">1123</td><td class="line">      <span class='keyword'>if</span> (BasePtr == MA-&gt;getAccessInstruction()) {</td></tr>
+<tr><td class="num" id="LN1124">1124</td><td class="line">        <span class='keyword'>if</span> (DerivedSAI-&gt;isPHIKind())</td></tr>
+<tr><td class="num" id="LN1125">1125</td><td class="line">          PHIOpMap[BasePtr] = Alloca;</td></tr>
+<tr><td class="num" id="LN1126">1126</td><td class="line">        <span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN1127">1127</td><td class="line">          ScalarMap[BasePtr] = Alloca;</td></tr>
+<tr><td class="num" id="LN1128">1128</td><td class="line">      }</td></tr>
+<tr><td class="num" id="LN1129">1129</td><td class="line">    }</td></tr>
+<tr><td class="num" id="LN1130">1130</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN1131">1131</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1132">1132</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>const</span> MemoryAccess *MA : MAs) {</td></tr>
+<tr><td class="num" id="LN1133">1133</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1134">1134</td><td class="line">    Instruction *MAAccInst = MA-&gt;getAccessInstruction();</td></tr>
+<tr><td class="num" id="LN1135">1135</td><td class="line">    <span class='comment'>// Use the escape system to get the correct value to users outside the SCoP.</span></td></tr>
+<tr><td class="num" id="LN1136">1136</td><td class="line">    BlockGenerator::EscapeUserVectorTy EscapeUsers;</td></tr>
+<tr><td class="num" id="LN1137">1137</td><td class="line">    <span class='keyword'>for</span> (<span class='keyword'>auto</span> *U : MAAccInst-&gt;users())</td></tr>
+<tr><td class="num" id="LN1138">1138</td><td class="line">      <span class='keyword'>if</span> (Instruction *UI = dyn_cast&lt;Instruction&gt;(U))</td></tr>
+<tr><td class="num" id="LN1139">1139</td><td class="line">        <span class='keyword'>if</span> (!S.contains(UI))</td></tr>
+<tr><td class="num" id="LN1140">1140</td><td class="line">          EscapeUsers.push_back(UI);</td></tr>
+<tr><td class="num" id="LN1141">1141</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1142">1142</td><td class="line">    <span class='keyword'>if</span> (EscapeUsers.empty())</td></tr>
+<tr><td class="num" id="LN1143">1143</td><td class="line">      <span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN1144">1144</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1145">1145</td><td class="line">    EscapeMap[MA-&gt;getAccessInstruction()] =</td></tr>
+<tr><td class="num" id="LN1146">1146</td><td class="line">        std::make_pair(Alloca, std::move(EscapeUsers));</td></tr>
+<tr><td class="num" id="LN1147">1147</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN1148">1148</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1149">1149</td><td class="line">  <span class='keyword'>return</span> <span class='keyword'>true</span>;</td></tr>
+<tr><td class="num" id="LN1150">1150</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1151">1151</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1152">1152</td><td class="line"><span class='keyword'>void</span> IslNodeBuilder::allocateNewArrays() {</td></tr>
+<tr><td class="num" id="LN1153">1153</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>auto</span> &amp;SAI : S.arrays()) {</td></tr>
+<tr><td class="num" id="LN1154">1154</td><td class="line">    <span class='keyword'>if</span> (SAI-&gt;getBasePtr())</td></tr>
+<tr><td class="num" id="LN1155">1155</td><td class="line">      <span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN1156">1156</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1157">1157</td><td class="line">    Type *NewArrayType = <span class='keyword'>nullptr</span>;</td></tr>
+<tr><td class="num" id="LN1158">1158</td><td class="line">    <span class='keyword'>for</span> (<span class='keyword'>unsigned</span> i = SAI-&gt;getNumberOfDimensions() - 1; i &gt;= 1; i--) {</td></tr>
+<tr><td class="num" id="LN1159">1159</td><td class="line">      <span class='keyword'>auto</span> *DimSize = SAI-&gt;getDimensionSize(i);</td></tr>
+<tr><td class="num" id="LN1160">1160</td><td class="line">      <span class='keyword'>unsigned</span> UnsignedDimSize = <span class='keyword'>static_cast</span>&lt;<span class='keyword'>const</span> SCEVConstant *&gt;(DimSize)</td></tr>
+<tr><td class="num" id="LN1161">1161</td><td class="line">                                     -&gt;getAPInt()</td></tr>
+<tr><td class="num" id="LN1162">1162</td><td class="line">                                     .getLimitedValue();</td></tr>
+<tr><td class="num" id="LN1163">1163</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1164">1164</td><td class="line">      <span class='keyword'>if</span> (!NewArrayType)</td></tr>
+<tr><td class="num" id="LN1165">1165</td><td class="line">        NewArrayType = SAI-&gt;getElementType();</td></tr>
+<tr><td class="num" id="LN1166">1166</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1167">1167</td><td class="line">      NewArrayType = ArrayType::get(NewArrayType, UnsignedDimSize);</td></tr>
+<tr><td class="num" id="LN1168">1168</td><td class="line">    }</td></tr>
+<tr><td class="num" id="LN1169">1169</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1170">1170</td><td class="line">    <span class='keyword'>auto</span> InstIt =</td></tr>
+<tr><td class="num" id="LN1171">1171</td><td class="line">        Builder.GetInsertBlock()-&gt;getParent()-&gt;getEntryBlock().getTerminator();</td></tr>
+<tr><td class="num" id="LN1172">1172</td><td class="line">    Value *CreatedArray =</td></tr>
+<tr><td class="num" id="LN1173">1173</td><td class="line">        <span class='keyword'>new</span> AllocaInst(NewArrayType, SAI-&gt;getName(), &amp;*InstIt);</td></tr>
+<tr><td class="num" id="LN1174">1174</td><td class="line">    SAI-&gt;setBasePtr(CreatedArray);</td></tr>
+<tr><td class="num" id="LN1175">1175</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN1176">1176</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1177">1177</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1178">1178</td><td class="line"><span class='keyword'>bool</span> IslNodeBuilder::preloadInvariantLoads() {</td></tr>
+<tr><td class="num" id="LN1179">1179</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1180">1180</td><td class="line">  <span class='keyword'>auto</span> &amp;InvariantEquivClasses = S.getInvariantAccesses();</td></tr>
+<tr><td class="num" id="LN1181">1181</td><td class="line">  <span class='keyword'>if</span> (InvariantEquivClasses.empty())</td></tr>
+<tr><td class="num" id="LN1182">1182</td><td class="line">    <span class='keyword'>return</span> <span class='keyword'>true</span>;</td></tr>
+<tr><td class="num" id="LN1183">1183</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1184">1184</td><td class="line">  BasicBlock *PreLoadBB = SplitBlock(Builder.GetInsertBlock(),</td></tr>
+<tr><td class="num" id="LN1185">1185</td><td class="line">                                     &amp;*Builder.GetInsertPoint(), &amp;DT, &amp;LI);</td></tr>
+<tr><td class="num" id="LN1186">1186</td><td class="line">  PreLoadBB-&gt;setName(<span class='string_literal'>"polly.preload.begin"</span>);</td></tr>
+<tr><td class="num" id="LN1187">1187</td><td class="line">  Builder.SetInsertPoint(&amp;PreLoadBB-&gt;front());</td></tr>
+<tr><td class="num" id="LN1188">1188</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1189">1189</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>auto</span> &amp;IAClass : InvariantEquivClasses)</td></tr>
+<tr><td class="num" id="LN1190">1190</td><td class="line">    <span class='keyword'>if</span> (!preloadInvariantEquivClass(IAClass))</td></tr>
+<tr><td class="num" id="LN1191">1191</td><td class="line">      <span class='keyword'>return</span> <span class='keyword'>false</span>;</td></tr>
+<tr><td class="num" id="LN1192">1192</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1193">1193</td><td class="line">  <span class='keyword'>return</span> <span class='keyword'>true</span>;</td></tr>
+<tr><td class="num" id="LN1194">1194</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1195">1195</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1196">1196</td><td class="line"><span class='keyword'>void</span> IslNodeBuilder::addParameters(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_set *Context) {</td></tr>
+<tr><td class="num" id="LN1197">1197</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1198">1198</td><td class="line">  <span class='comment'>// Materialize values for the parameters of the SCoP.</span></td></tr>
+<tr><td class="num" id="LN1199">1199</td><td class="line">  materializeParameters(Context, <span class='comment'>/* all */</span> <span class='keyword'>true</span>);</td></tr>
+<tr><td class="num" id="LN1200">1200</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1201">1201</td><td class="line">  <span class='comment'>// Generate values for the current loop iteration for all surrounding loops.</span></td></tr>
+<tr><td class="num" id="LN1202">1202</td><td class="line">  <span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN1203">1203</td><td class="line">  <span class='comment'>// We may also reference loops outside of the scop which do not contain the</span></td></tr>
+<tr><td class="num" id="LN1204">1204</td><td class="line">  <span class='comment'>// scop itself, but as the number of such scops may be arbitrarily large we do</span></td></tr>
+<tr><td class="num" id="LN1205">1205</td><td class="line">  <span class='comment'>// not generate code for them here, but only at the point of code generation</span></td></tr>
+<tr><td class="num" id="LN1206">1206</td><td class="line">  <span class='comment'>// where these values are needed.</span></td></tr>
+<tr><td class="num" id="LN1207">1207</td><td class="line">  Loop *L = LI.getLoopFor(S.getEntry());</td></tr>
+<tr><td class="num" id="LN1208">1208</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1209">1209</td><td class="line">  <span class='keyword'>while</span> (L != <span class='keyword'>nullptr</span> &amp;&amp; S.contains(L))</td></tr>
+<tr><td class="num" id="LN1210">1210</td><td class="line">    L = L-&gt;getParentLoop();</td></tr>
+<tr><td class="num" id="LN1211">1211</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1212">1212</td><td class="line">  <span class='keyword'>while</span> (L != <span class='keyword'>nullptr</span>) {</td></tr>
+<tr><td class="num" id="LN1213">1213</td><td class="line">    <span class='keyword'>const</span> SCEV *OuterLIV = SE.getAddRecExpr(SE.getUnknown(Builder.getInt64(0)),</td></tr>
+<tr><td class="num" id="LN1214">1214</td><td class="line">                                            SE.getUnknown(Builder.getInt64(1)),</td></tr>
+<tr><td class="num" id="LN1215">1215</td><td class="line">                                            L, SCEV::FlagAnyWrap);</td></tr>
+<tr><td class="num" id="LN1216">1216</td><td class="line">    Value *V = generateSCEV(OuterLIV);</td></tr>
+<tr><td class="num" id="LN1217">1217</td><td class="line">    OutsideLoopIterations[L] = SE.getUnknown(V);</td></tr>
+<tr><td class="num" id="LN1218">1218</td><td class="line">    L = L-&gt;getParentLoop();</td></tr>
+<tr><td class="num" id="LN1219">1219</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN1220">1220</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1221">1221</td><td class="line">  isl_set_free(Context);</td></tr>
+<tr><td class="num" id="LN1222">1222</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1223">1223</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1224">1224</td><td class="line">Value *IslNodeBuilder::generateSCEV(<span class='keyword'>const</span> SCEV *Expr) {</td></tr>
+<tr><td class="num" id="LN1225">1225</td><td class="line">  <span class='comment'>/// We pass the insert location of our Builder, as Polly ensures during IR</span></td></tr>
+<tr><td class="num" id="LN1226">1226</td><td class="line">  <span class='comment'>/// generation that there is always a valid CFG into which instructions are</span></td></tr>
+<tr><td class="num" id="LN1227">1227</td><td class="line">  <span class='comment'>/// inserted. As a result, the insertpoint is known to be always followed by a</span></td></tr>
+<tr><td class="num" id="LN1228">1228</td><td class="line">  <span class='comment'>/// terminator instruction. This means the insert point may be specified by a</span></td></tr>
+<tr><td class="num" id="LN1229">1229</td><td class="line">  <span class='comment'>/// terminator instruction, but it can never point to an -&gt;end() iterator</span></td></tr>
+<tr><td class="num" id="LN1230">1230</td><td class="line">  <span class='comment'>/// which does not have a corresponding instruction. Hence, dereferencing</span></td></tr>
+<tr><td class="num" id="LN1231">1231</td><td class="line">  <span class='comment'>/// the insertpoint to obtain an instruction is known to be save.</span></td></tr>
+<tr><td class="num" id="LN1232">1232</td><td class="line">  <span class='comment'>///</span></td></tr>
+<tr><td class="num" id="LN1233">1233</td><td class="line">  <span class='comment'>/// We also do not need to update the Builder here, as new instructions are</span></td></tr>
+<tr><td class="num" id="LN1234">1234</td><td class="line">  <span class='comment'>/// always inserted _before_ the given InsertLocation. As a result, the</span></td></tr>
+<tr><td class="num" id="LN1235">1235</td><td class="line">  <span class='comment'>/// insert location remains valid.</span></td></tr>
+<tr><td class="num" id="LN1236">1236</td><td class="line">  <span class='macro'>assert(Builder.GetInsertBlock()-&gt;end() != Builder.GetInsertPoint() &amp;&amp;<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span></td></tr>
+<tr><td class="num" id="LN1237">1237</td><td class="line">         <span class='string_literal'><span class='macro'>"Insert location points after last valid instruction"</span>)<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN1238">1238</td><td class="line">  Instruction *InsertLocation = &amp;*Builder.GetInsertPoint();</td></tr>
+<tr><td class="num" id="LN1239">1239</td><td class="line">  <span class='keyword'>return</span> expandCodeFor(S, SE, DL, <span class='string_literal'>"polly"</span>, Expr, Expr-&gt;getType(),</td></tr>
+<tr><td class="num" id="LN1240">1240</td><td class="line">                       InsertLocation, &amp;ValueMap);</td></tr>
+<tr><td class="num" id="LN1241">1241</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1242">1242</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1243">1243</td><td class="line"><span class='comment'>/// The AST expression we generate to perform the run-time check assumes</span></td></tr>
+<tr><td class="num" id="LN1244">1244</td><td class="line"><span class='comment'>/// computations on integer types of infinite size. As we only use 64-bit</span></td></tr>
+<tr><td class="num" id="LN1245">1245</td><td class="line"><span class='comment'>/// arithmetic we check for overflows, in case of which we set the result</span></td></tr>
+<tr><td class="num" id="LN1246">1246</td><td class="line"><span class='comment'>/// of this run-time check to false to be cosnservatively correct,</span></td></tr>
+<tr><td class="num" id="LN1247">1247</td><td class="line">Value *IslNodeBuilder::createRTC(isl_ast_expr *Condition) {</td></tr>
+<tr><td class="num" id="LN1248">1248</td><td class="line">  <span class='keyword'>auto</span> ExprBuilder = getExprBuilder();</td></tr>
+<tr><td class="num" id="LN1249">1249</td><td class="line">  ExprBuilder.setTrackOverflow(<span class='keyword'>true</span>);</td></tr>
+<tr><td class="num" id="LN1250">1250</td><td class="line">  Value *RTC = ExprBuilder.create(Condition);</td></tr>
+<tr><td class="num" id="LN1251">1251</td><td class="line">  <span class='keyword'>if</span> (!RTC-&gt;getType()-&gt;isIntegerTy(1))</td></tr>
+<tr><td class="num" id="LN1252">1252</td><td class="line">    RTC = Builder.CreateIsNotNull(RTC);</td></tr>
+<tr><td class="num" id="LN1253">1253</td><td class="line">  Value *OverflowHappened =</td></tr>
+<tr><td class="num" id="LN1254">1254</td><td class="line">      Builder.CreateNot(ExprBuilder.getOverflowState(), <span class='string_literal'>"polly.rtc.overflown"</span>);</td></tr>
+<tr><td class="num" id="LN1255">1255</td><td class="line">  RTC = Builder.CreateAnd(RTC, OverflowHappened, <span class='string_literal'>"polly.rtc.result"</span>);</td></tr>
+<tr><td class="num" id="LN1256">1256</td><td class="line">  ExprBuilder.setTrackOverflow(<span class='keyword'>false</span>);</td></tr>
+<tr><td class="num" id="LN1257">1257</td><td class="line">  <span class='keyword'>return</span> RTC;</td></tr>
+<tr><td class="num" id="LN1258">1258</td><td class="line">}</td></tr>
+</table></body></html>

@@ -1,0 +1,980 @@
+<!doctype html>
+<html>
+<head>
+<title>/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/Analysis/DependenceInfo.cpp</title>
+<style type="text/css">
+ body { color:#000000; background-color:#ffffff }
+ body { font-family:Helvetica, sans-serif; font-size:10pt }
+ h1 { font-size:14pt }
+ .code { border-collapse:collapse; width:100%; }
+ .code { font-family: "Monospace", monospace; font-size:10pt }
+ .code { line-height: 1.2em }
+ .comment { color: green; font-style: oblique }
+ .keyword { color: blue }
+ .string_literal { color: red }
+ .directive { color: darkmagenta }
+ .expansion { display: none; }
+ .macro:hover .expansion { display: block; border: 2px solid #FF0000; padding: 2px; background-color:#FFF0F0; font-weight: normal;   -webkit-border-radius:5px;  -webkit-box-shadow:1px 1px 7px #000; position: absolute; top: -1em; left:10em; z-index: 1 } 
+ .macro { color: darkmagenta; background-color:LemonChiffon; position: relative }
+ .num { width:2.5em; padding-right:2ex; background-color:#eeeeee }
+ .num { text-align:right; font-size:8pt }
+ .num { color:#444444 }
+ .line { padding-left: 1ex; border-left: 3px solid #ccc }
+ .line { white-space: pre }
+ .msg { -webkit-box-shadow:1px 1px 7px #000 }
+ .msg { -webkit-border-radius:5px }
+ .msg { font-family:Helvetica, sans-serif; font-size:8pt }
+ .msg { float:left }
+ .msg { padding:0.25em 1ex 0.25em 1ex }
+ .msg { margin-top:10px; margin-bottom:10px }
+ .msg { font-weight:bold }
+ .msg { max-width:60em; word-wrap: break-word; white-space: pre-wrap }
+ .msgT { padding:0x; spacing:0x }
+ .msgEvent { background-color:#fff8b4; color:#000000 }
+ .msgControl { background-color:#bbbbbb; color:#000000 }
+ .mrange { background-color:#dfddf3 }
+ .mrange { border-bottom:1px solid #6F9DBE }
+ .PathIndex { font-weight: bold; padding:0px 5px; margin-right:5px; }
+ .PathIndex { -webkit-border-radius:8px }
+ .PathIndexEvent { background-color:#bfba87 }
+ .PathIndexControl { background-color:#8c8c8c }
+ .PathNav a { text-decoration:none; font-size: larger }
+ .CodeInsertionHint { font-weight: bold; background-color: #10dd10 }
+ .CodeRemovalHint { background-color:#de1010 }
+ .CodeRemovalHint { border-bottom:1px solid #6F9DBE }
+ table.simpletable {
+   padding: 5px;
+   font-size:12pt;
+   margin:20px;
+   border-collapse: collapse; border-spacing: 0px;
+ }
+ td.rowname {
+   text-align:right; font-weight:bold; color:#444444;
+   padding-right:2ex; }
+</style>
+</head>
+<body>
+<!-- BUGDESC Incorrect decrement of the reference count of an object that is not owned at this point by the caller -->
+
+<!-- BUGTYPE Bad release -->
+
+<!-- BUGCATEGORY Memory (Core Foundation/Objective-C) -->
+
+<!-- BUGFILE /cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/Analysis/DependenceInfo.cpp -->
+
+<!-- FILENAME DependenceInfo.cpp -->
+
+<!-- FUNCTIONNAME calculateDependences -->
+
+<!-- ISSUEHASHCONTENTOFLINEINCONTEXT ccd1cfba4fa021b92812b5f3477e06f2 -->
+
+<!-- BUGLINE 543 -->
+
+<!-- BUGCOLUMN 28 -->
+
+<!-- BUGPATHLENGTH 12 -->
+
+<!-- BUGMETAEND -->
+<!-- REPORTHEADER -->
+<h3>Bug Summary</h3>
+<table class="simpletable">
+<tr><td class="rowname">File:</td><td>Analysis/DependenceInfo.cpp</td></tr>
+<tr><td class="rowname">Location:</td><td><a href="#EndPath">line 543, column 28</a></td></tr>
+<tr><td class="rowname">Description:</td><td>Incorrect decrement of the reference count of an object that is not owned at this point by the caller</td></tr>
+<tr><td></td><td>Code is compiled to use reference counts</td></tr>
+</table>
+<!-- REPORTSUMMARYEXTRA -->
+<h3>Annotated Source Code</h3>
+<table class="code">
+<tr><td class="num" id="LN1">1</td><td class="line"><span class='comment'>//===- DependenceInfo.cpp - Calculate dependency information for a Scop. --===//</span></td></tr>
+<tr><td class="num" id="LN2">2</td><td class="line"><span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN3">3</td><td class="line"><span class='comment'>//                     The LLVM Compiler Infrastructure</span></td></tr>
+<tr><td class="num" id="LN4">4</td><td class="line"><span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN5">5</td><td class="line"><span class='comment'>// This file is distributed under the University of Illinois Open Source</span></td></tr>
+<tr><td class="num" id="LN6">6</td><td class="line"><span class='comment'>// License. See LICENSE.TXT for details.</span></td></tr>
+<tr><td class="num" id="LN7">7</td><td class="line"><span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN8">8</td><td class="line"><span class='comment'>//===----------------------------------------------------------------------===//</span></td></tr>
+<tr><td class="num" id="LN9">9</td><td class="line"><span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN10">10</td><td class="line"><span class='comment'>// Calculate the data dependency relations for a Scop using ISL.</span></td></tr>
+<tr><td class="num" id="LN11">11</td><td class="line"><span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN12">12</td><td class="line"><span class='comment'>// The integer set library (ISL) from Sven, has a integrated dependency analysis</span></td></tr>
+<tr><td class="num" id="LN13">13</td><td class="line"><span class='comment'>// to calculate data dependences. This pass takes advantage of this and</span></td></tr>
+<tr><td class="num" id="LN14">14</td><td class="line"><span class='comment'>// calculate those dependences a Scop.</span></td></tr>
+<tr><td class="num" id="LN15">15</td><td class="line"><span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN16">16</td><td class="line"><span class='comment'>// The dependences in this pass are exact in terms that for a specific read</span></td></tr>
+<tr><td class="num" id="LN17">17</td><td class="line"><span class='comment'>// statement instance only the last write statement instance is returned. In</span></td></tr>
+<tr><td class="num" id="LN18">18</td><td class="line"><span class='comment'>// case of may writes a set of possible write instances is returned. This</span></td></tr>
+<tr><td class="num" id="LN19">19</td><td class="line"><span class='comment'>// analysis will never produce redundant dependences.</span></td></tr>
+<tr><td class="num" id="LN20">20</td><td class="line"><span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN21">21</td><td class="line"><span class='comment'>//===----------------------------------------------------------------------===//</span></td></tr>
+<tr><td class="num" id="LN22">22</td><td class="line"><span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN23">23</td><td class="line"><span class='directive'>#include "polly/DependenceInfo.h"</span></td></tr>
+<tr><td class="num" id="LN24">24</td><td class="line"><span class='directive'>#include "polly/LinkAllPasses.h"</span></td></tr>
+<tr><td class="num" id="LN25">25</td><td class="line"><span class='directive'>#include "polly/Options.h"</span></td></tr>
+<tr><td class="num" id="LN26">26</td><td class="line"><span class='directive'>#include "polly/ScopInfo.h"</span></td></tr>
+<tr><td class="num" id="LN27">27</td><td class="line"><span class='directive'>#include "polly/Support/GICHelper.h"</span></td></tr>
+<tr><td class="num" id="LN28">28</td><td class="line"><span class='directive'>#include "llvm/Support/Debug.h"</span></td></tr>
+<tr><td class="num" id="LN29">29</td><td class="line"><span class='directive'>#include &lt;isl/aff.h&gt;</span></td></tr>
+<tr><td class="num" id="LN30">30</td><td class="line"><span class='directive'>#include &lt;isl/ctx.h&gt;</span></td></tr>
+<tr><td class="num" id="LN31">31</td><td class="line"><span class='directive'>#include &lt;isl/flow.h&gt;</span></td></tr>
+<tr><td class="num" id="LN32">32</td><td class="line"><span class='directive'>#include &lt;isl/map.h&gt;</span></td></tr>
+<tr><td class="num" id="LN33">33</td><td class="line"><span class='directive'>#include &lt;isl/options.h&gt;</span></td></tr>
+<tr><td class="num" id="LN34">34</td><td class="line"><span class='directive'>#include &lt;isl/schedule.h&gt;</span></td></tr>
+<tr><td class="num" id="LN35">35</td><td class="line"><span class='directive'>#include &lt;isl/set.h&gt;</span></td></tr>
+<tr><td class="num" id="LN36">36</td><td class="line"><span class='directive'>#include &lt;isl/union_map.h&gt;</span></td></tr>
+<tr><td class="num" id="LN37">37</td><td class="line"><span class='directive'>#include &lt;isl/union_set.h&gt;</span></td></tr>
+<tr><td class="num" id="LN38">38</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN39">39</td><td class="line"><span class='keyword'>using</span> <span class='keyword'>namespace</span> polly;</td></tr>
+<tr><td class="num" id="LN40">40</td><td class="line"><span class='keyword'>using</span> <span class='keyword'>namespace</span> llvm;</td></tr>
+<tr><td class="num" id="LN41">41</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN42">42</td><td class="line"><span class='directive'>#define <span class='macro'>DEBUG_TYPE<span class='expansion'>"polly-dependence"</span></span> "polly-dependence"</span></td></tr>
+<tr><td class="num" id="LN43">43</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN44">44</td><td class="line"><span class='keyword'>static</span> cl::opt&lt;<span class='keyword'>int</span>&gt; OptComputeOut(</td></tr>
+<tr><td class="num" id="LN45">45</td><td class="line">    <span class='string_literal'>"polly-dependences-computeout"</span>,</td></tr>
+<tr><td class="num" id="LN46">46</td><td class="line">    cl::desc(<span class='string_literal'>"Bound the dependence analysis by a maximal amount of "</span></td></tr>
+<tr><td class="num" id="LN47">47</td><td class="line">             <span class='string_literal'>"computational steps (0 means no bound)"</span>),</td></tr>
+<tr><td class="num" id="LN48">48</td><td class="line">    cl::Hidden, cl::init(500000), cl::ZeroOrMore, cl::cat(PollyCategory));</td></tr>
+<tr><td class="num" id="LN49">49</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN50">50</td><td class="line"><span class='keyword'>static</span> cl::opt&lt;<span class='keyword'>bool</span>&gt; LegalityCheckDisabled(</td></tr>
+<tr><td class="num" id="LN51">51</td><td class="line">    <span class='string_literal'>"disable-polly-legality"</span>, cl::desc(<span class='string_literal'>"Disable polly legality check"</span>),</td></tr>
+<tr><td class="num" id="LN52">52</td><td class="line">    cl::Hidden, cl::init(<span class='keyword'>false</span>), cl::ZeroOrMore, cl::cat(PollyCategory));</td></tr>
+<tr><td class="num" id="LN53">53</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN54">54</td><td class="line"><span class='keyword'>static</span> cl::opt&lt;<span class='keyword'>bool</span>&gt;</td></tr>
+<tr><td class="num" id="LN55">55</td><td class="line">    UseReductions(<span class='string_literal'>"polly-dependences-use-reductions"</span>,</td></tr>
+<tr><td class="num" id="LN56">56</td><td class="line">                  cl::desc(<span class='string_literal'>"Exploit reductions in dependence analysis"</span>),</td></tr>
+<tr><td class="num" id="LN57">57</td><td class="line">                  cl::Hidden, cl::init(<span class='keyword'>true</span>), cl::ZeroOrMore,</td></tr>
+<tr><td class="num" id="LN58">58</td><td class="line">                  cl::cat(PollyCategory));</td></tr>
+<tr><td class="num" id="LN59">59</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN60">60</td><td class="line"><span class='keyword'>enum</span> AnalysisType { VALUE_BASED_ANALYSIS, MEMORY_BASED_ANALYSIS };</td></tr>
+<tr><td class="num" id="LN61">61</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN62">62</td><td class="line"><span class='keyword'>static</span> cl::opt&lt;<span class='keyword'>enum</span> AnalysisType&gt; OptAnalysisType(</td></tr>
+<tr><td class="num" id="LN63">63</td><td class="line">    <span class='string_literal'>"polly-dependences-analysis-type"</span>,</td></tr>
+<tr><td class="num" id="LN64">64</td><td class="line">    cl::desc(<span class='string_literal'>"The kind of dependence analysis to use"</span>),</td></tr>
+<tr><td class="num" id="LN65">65</td><td class="line">    cl::values(<span class='macro'>clEnumValN(VALUE_BASED_ANALYSIS, <span class='string_literal'>"value-based"</span>,<span class='expansion'>"value-based", int(VALUE_BASED_ANALYSIS), "Exact dependences without transitive dependences"</span></span></td></tr>
+<tr><td class="num" id="LN66">66</td><td class="line">                          <span class='string_literal'><span class='macro'>"Exact dependences without transitive dependences"</span>)<span class='expansion'>"value-based", int(VALUE_BASED_ANALYSIS), "Exact dependences without transitive dependences"</span></span>,</td></tr>
+<tr><td class="num" id="LN67">67</td><td class="line">               <span class='macro'>clEnumValN(MEMORY_BASED_ANALYSIS, <span class='string_literal'>"memory-based"</span>,<span class='expansion'>"memory-based", int(MEMORY_BASED_ANALYSIS), "Overapproximation of dependences"</span></span></td></tr>
+<tr><td class="num" id="LN68">68</td><td class="line">                          <span class='string_literal'><span class='macro'>"Overapproximation of dependences"</span>)<span class='expansion'>"memory-based", int(MEMORY_BASED_ANALYSIS), "Overapproximation of dependences"</span></span>,</td></tr>
+<tr><td class="num" id="LN69">69</td><td class="line">               <span class='macro'>clEnumValEnd<span class='expansion'>(reinterpret_cast&lt;void *&gt;(0))</span></span>),</td></tr>
+<tr><td class="num" id="LN70">70</td><td class="line">    cl::Hidden, cl::init(VALUE_BASED_ANALYSIS), cl::ZeroOrMore,</td></tr>
+<tr><td class="num" id="LN71">71</td><td class="line">    cl::cat(PollyCategory));</td></tr>
+<tr><td class="num" id="LN72">72</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN73">73</td><td class="line"><span class='keyword'>static</span> cl::opt&lt;Dependences::AnalyisLevel&gt; OptAnalysisLevel(</td></tr>
+<tr><td class="num" id="LN74">74</td><td class="line">    <span class='string_literal'>"polly-dependences-analysis-level"</span>,</td></tr>
+<tr><td class="num" id="LN75">75</td><td class="line">    cl::desc(<span class='string_literal'>"The level of dependence analysis"</span>),</td></tr>
+<tr><td class="num" id="LN76">76</td><td class="line">    cl::values(<span class='macro'>clEnumValN(Dependences::AL_Statement, <span class='string_literal'>"statement-wise"</span>,<span class='expansion'>"statement-wise", int(Dependences::AL_Statement), "Statement-level analysis"</span></span></td></tr>
+<tr><td class="num" id="LN77">77</td><td class="line">                          <span class='string_literal'><span class='macro'>"Statement-level analysis"</span>)<span class='expansion'>"statement-wise", int(Dependences::AL_Statement), "Statement-level analysis"</span></span>,</td></tr>
+<tr><td class="num" id="LN78">78</td><td class="line">               <span class='macro'>clEnumValN(Dependences::AL_Reference, <span class='string_literal'>"reference-wise"</span>,<span class='expansion'>"reference-wise", int(Dependences::AL_Reference), "Memory reference level analysis that distinguish"<br> " accessed references in the same statement"</span></span></td></tr>
+<tr><td class="num" id="LN79">79</td><td class="line">                          <span class='string_literal'><span class='macro'>"Memory reference level analysis that distinguish"<span class='expansion'>"reference-wise", int(Dependences::AL_Reference), "Memory reference level analysis that distinguish"<br> " accessed references in the same statement"</span></span></span></td></tr>
+<tr><td class="num" id="LN80">80</td><td class="line">                          <span class='string_literal'><span class='macro'>" accessed references in the same statement"</span>)<span class='expansion'>"reference-wise", int(Dependences::AL_Reference), "Memory reference level analysis that distinguish"<br> " accessed references in the same statement"</span></span>,</td></tr>
+<tr><td class="num" id="LN81">81</td><td class="line">               <span class='macro'>clEnumValN(Dependences::AL_Access, <span class='string_literal'>"access-wise"</span>,<span class='expansion'>"access-wise", int(Dependences::AL_Access), "Memory reference level analysis that distinguish"<br> " access instructions in the same statement"</span></span></td></tr>
+<tr><td class="num" id="LN82">82</td><td class="line">                          <span class='string_literal'><span class='macro'>"Memory reference level analysis that distinguish"<span class='expansion'>"access-wise", int(Dependences::AL_Access), "Memory reference level analysis that distinguish"<br> " access instructions in the same statement"</span></span></span></td></tr>
+<tr><td class="num" id="LN83">83</td><td class="line">                          <span class='string_literal'><span class='macro'>" access instructions in the same statement"</span>)<span class='expansion'>"access-wise", int(Dependences::AL_Access), "Memory reference level analysis that distinguish"<br> " access instructions in the same statement"</span></span>,</td></tr>
+<tr><td class="num" id="LN84">84</td><td class="line">               <span class='macro'>clEnumValEnd<span class='expansion'>(reinterpret_cast&lt;void *&gt;(0))</span></span>),</td></tr>
+<tr><td class="num" id="LN85">85</td><td class="line">    cl::Hidden, cl::init(Dependences::AL_Statement), cl::ZeroOrMore,</td></tr>
+<tr><td class="num" id="LN86">86</td><td class="line">    cl::cat(PollyCategory));</td></tr>
+<tr><td class="num" id="LN87">87</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN88">88</td><td class="line"><span class='comment'>//===----------------------------------------------------------------------===//</span></td></tr>
+<tr><td class="num" id="LN89">89</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN90">90</td><td class="line"><span class='comment'>/// Tag the @p Relation domain with @p TagId</span></td></tr>
+<tr><td class="num" id="LN91">91</td><td class="line"><span class='keyword'>static</span> <span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_map *tag(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_map *Relation,</td></tr>
+<tr><td class="num" id="LN92">92</td><td class="line">                               <span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_id *TagId) {</td></tr>
+<tr><td class="num" id="LN93">93</td><td class="line">  isl_space *Space = isl_map_get_space(Relation);</td></tr>
+<tr><td class="num" id="LN94">94</td><td class="line">  Space = isl_space_drop_dims(Space, isl_dim_out, 0, isl_map_n_out(Relation));</td></tr>
+<tr><td class="num" id="LN95">95</td><td class="line">  Space = isl_space_set_tuple_id(Space, isl_dim_out, TagId);</td></tr>
+<tr><td class="num" id="LN96">96</td><td class="line">  isl_multi_aff *Tag = isl_multi_aff_domain_map(Space);</td></tr>
+<tr><td class="num" id="LN97">97</td><td class="line">  Relation = isl_map_preimage_domain_multi_aff(Relation, Tag);</td></tr>
+<tr><td class="num" id="LN98">98</td><td class="line">  <span class='keyword'>return</span> Relation;</td></tr>
+<tr><td class="num" id="LN99">99</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN100">100</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN101">101</td><td class="line"><span class='comment'>/// Tag the @p Relation domain with either MA-&gt;getArrayId() or</span></td></tr>
+<tr><td class="num" id="LN102">102</td><td class="line"><span class='comment'>///        MA-&gt;getId() based on @p TagLevel</span></td></tr>
+<tr><td class="num" id="LN103">103</td><td class="line"><span class='keyword'>static</span> <span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_map *tag(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_map *Relation, MemoryAccess *MA,</td></tr>
+<tr><td class="num" id="LN104">104</td><td class="line">                               Dependences::AnalyisLevel TagLevel) {</td></tr>
+<tr><td class="num" id="LN105">105</td><td class="line">  <span class='keyword'>if</span> (TagLevel == Dependences::AL_Reference)</td></tr>
+<tr><td class="num" id="LN106">106</td><td class="line">    <span class='keyword'>return</span> tag(Relation, MA-&gt;getArrayId());</td></tr>
+<tr><td class="num" id="LN107">107</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN108">108</td><td class="line">  <span class='keyword'>if</span> (TagLevel == Dependences::AL_Access)</td></tr>
+<tr><td class="num" id="LN109">109</td><td class="line">    <span class='keyword'>return</span> tag(Relation, MA-&gt;getId());</td></tr>
+<tr><td class="num" id="LN110">110</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN111">111</td><td class="line">  <span class='comment'>// No need to tag at the statement level.</span></td></tr>
+<tr><td class="num" id="LN112">112</td><td class="line">  <span class='keyword'>return</span> Relation;</td></tr>
+<tr><td class="num" id="LN113">113</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN114">114</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN115">115</td><td class="line"><span class='comment'>/// Collect information about the SCoP @p S.</span></td></tr>
+<tr><td class="num" id="LN116">116</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>void</span> collectInfo(Scop &amp;S, isl_union_map **Read, isl_union_map **Write,</td></tr>
+<tr><td class="num" id="LN117">117</td><td class="line">                        isl_union_map **MayWrite,</td></tr>
+<tr><td class="num" id="LN118">118</td><td class="line">                        isl_union_map **AccessSchedule,</td></tr>
+<tr><td class="num" id="LN119">119</td><td class="line">                        isl_union_map **StmtSchedule,</td></tr>
+<tr><td class="num" id="LN120">120</td><td class="line">                        Dependences::AnalyisLevel Level) {</td></tr>
+<tr><td class="num" id="LN121">121</td><td class="line">  isl_space *Space = S.getParamSpace();</td></tr>
+<tr><td class="num" id="LN122">122</td><td class="line">  *Read = isl_union_map_empty(isl_space_copy(Space));</td></tr>
+<tr><td class="num" id="LN123">123</td><td class="line">  *Write = isl_union_map_empty(isl_space_copy(Space));</td></tr>
+<tr><td class="num" id="LN124">124</td><td class="line">  *MayWrite = isl_union_map_empty(isl_space_copy(Space));</td></tr>
+<tr><td class="num" id="LN125">125</td><td class="line">  *AccessSchedule = isl_union_map_empty(isl_space_copy(Space));</td></tr>
+<tr><td class="num" id="LN126">126</td><td class="line">  *StmtSchedule = isl_union_map_empty(Space);</td></tr>
+<tr><td class="num" id="LN127">127</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN128">128</td><td class="line">  SmallPtrSet&lt;<span class='keyword'>const</span> Value *, 8&gt; ReductionBaseValues;</td></tr>
+<tr><td class="num" id="LN129">129</td><td class="line">  <span class='keyword'>if</span> (UseReductions)</td></tr>
+<tr><td class="num" id="LN130">130</td><td class="line">    <span class='keyword'>for</span> (ScopStmt &amp;Stmt : S)</td></tr>
+<tr><td class="num" id="LN131">131</td><td class="line">      <span class='keyword'>for</span> (MemoryAccess *MA : Stmt)</td></tr>
+<tr><td class="num" id="LN132">132</td><td class="line">        <span class='keyword'>if</span> (MA-&gt;isReductionLike())</td></tr>
+<tr><td class="num" id="LN133">133</td><td class="line">          ReductionBaseValues.insert(MA-&gt;getBaseAddr());</td></tr>
+<tr><td class="num" id="LN134">134</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN135">135</td><td class="line">  <span class='keyword'>for</span> (ScopStmt &amp;Stmt : S) {</td></tr>
+<tr><td class="num" id="LN136">136</td><td class="line">    <span class='keyword'>for</span> (MemoryAccess *MA : Stmt) {</td></tr>
+<tr><td class="num" id="LN137">137</td><td class="line">      isl_set *domcp = Stmt.getDomain();</td></tr>
+<tr><td class="num" id="LN138">138</td><td class="line">      isl_map *accdom = MA-&gt;getAccessRelation();</td></tr>
+<tr><td class="num" id="LN139">139</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN140">140</td><td class="line">      accdom = isl_map_intersect_domain(accdom, domcp);</td></tr>
+<tr><td class="num" id="LN141">141</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN142">142</td><td class="line">      <span class='keyword'>if</span> (ReductionBaseValues.count(MA-&gt;getBaseAddr())) {</td></tr>
+<tr><td class="num" id="LN143">143</td><td class="line">        <span class='comment'>// Wrap the access domain and adjust the schedule accordingly.</span></td></tr>
+<tr><td class="num" id="LN144">144</td><td class="line">        <span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN145">145</td><td class="line">        <span class='comment'>// An access domain like</span></td></tr>
+<tr><td class="num" id="LN146">146</td><td class="line">        <span class='comment'>//   Stmt[i0, i1] -&gt; MemAcc_A[i0 + i1]</span></td></tr>
+<tr><td class="num" id="LN147">147</td><td class="line">        <span class='comment'>// will be transformed into</span></td></tr>
+<tr><td class="num" id="LN148">148</td><td class="line">        <span class='comment'>//   [Stmt[i0, i1] -&gt; MemAcc_A[i0 + i1]] -&gt; MemAcc_A[i0 + i1]</span></td></tr>
+<tr><td class="num" id="LN149">149</td><td class="line">        <span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN150">150</td><td class="line">        <span class='comment'>// The original schedule looks like</span></td></tr>
+<tr><td class="num" id="LN151">151</td><td class="line">        <span class='comment'>//   Stmt[i0, i1] -&gt; [0, i0, 2, i1, 0]</span></td></tr>
+<tr><td class="num" id="LN152">152</td><td class="line">        <span class='comment'>// but as we transformed the access domain we need the schedule</span></td></tr>
+<tr><td class="num" id="LN153">153</td><td class="line">        <span class='comment'>// to match the new access domains, thus we need</span></td></tr>
+<tr><td class="num" id="LN154">154</td><td class="line">        <span class='comment'>//   [Stmt[i0, i1] -&gt; MemAcc_A[i0 + i1]] -&gt; [0, i0, 2, i1, 0]</span></td></tr>
+<tr><td class="num" id="LN155">155</td><td class="line">        isl_map *Schedule = Stmt.getSchedule();</td></tr>
+<tr><td class="num" id="LN156">156</td><td class="line">        Schedule = isl_map_apply_domain(</td></tr>
+<tr><td class="num" id="LN157">157</td><td class="line">            Schedule,</td></tr>
+<tr><td class="num" id="LN158">158</td><td class="line">            isl_map_reverse(isl_map_domain_map(isl_map_copy(accdom))));</td></tr>
+<tr><td class="num" id="LN159">159</td><td class="line">        accdom = isl_map_range_map(accdom);</td></tr>
+<tr><td class="num" id="LN160">160</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN161">161</td><td class="line">        *AccessSchedule = isl_union_map_add_map(*AccessSchedule, Schedule);</td></tr>
+<tr><td class="num" id="LN162">162</td><td class="line">      } <span class='keyword'>else</span> {</td></tr>
+<tr><td class="num" id="LN163">163</td><td class="line">        accdom = tag(accdom, MA, Level);</td></tr>
+<tr><td class="num" id="LN164">164</td><td class="line">        <span class='keyword'>if</span> (Level &gt; Dependences::AL_Statement) {</td></tr>
+<tr><td class="num" id="LN165">165</td><td class="line">          isl_map *Schedule = tag(Stmt.getSchedule(), MA, Level);</td></tr>
+<tr><td class="num" id="LN166">166</td><td class="line">          *StmtSchedule = isl_union_map_add_map(*StmtSchedule, Schedule);</td></tr>
+<tr><td class="num" id="LN167">167</td><td class="line">        }</td></tr>
+<tr><td class="num" id="LN168">168</td><td class="line">      }</td></tr>
+<tr><td class="num" id="LN169">169</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN170">170</td><td class="line">      <span class='keyword'>if</span> (MA-&gt;isRead())</td></tr>
+<tr><td class="num" id="LN171">171</td><td class="line">        *Read = isl_union_map_add_map(*Read, accdom);</td></tr>
+<tr><td class="num" id="LN172">172</td><td class="line">      <span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN173">173</td><td class="line">        *Write = isl_union_map_add_map(*Write, accdom);</td></tr>
+<tr><td class="num" id="LN174">174</td><td class="line">    }</td></tr>
+<tr><td class="num" id="LN175">175</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN176">176</td><td class="line">    <span class='keyword'>if</span> (!ReductionBaseValues.empty() &amp;&amp; Level == Dependences::AL_Statement)</td></tr>
+<tr><td class="num" id="LN177">177</td><td class="line">      *StmtSchedule = isl_union_map_add_map(*StmtSchedule, Stmt.getSchedule());</td></tr>
+<tr><td class="num" id="LN178">178</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN179">179</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN180">180</td><td class="line">  *StmtSchedule =</td></tr>
+<tr><td class="num" id="LN181">181</td><td class="line">      isl_union_map_intersect_params(*StmtSchedule, S.getAssumedContext());</td></tr>
+<tr><td class="num" id="LN182">182</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN183">183</td><td class="line">  *Read = isl_union_map_coalesce(*Read);</td></tr>
+<tr><td class="num" id="LN184">184</td><td class="line">  *Write = isl_union_map_coalesce(*Write);</td></tr>
+<tr><td class="num" id="LN185">185</td><td class="line">  *MayWrite = isl_union_map_coalesce(*MayWrite);</td></tr>
+<tr><td class="num" id="LN186">186</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN187">187</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN188">188</td><td class="line"><span class='comment'>/// Fix all dimension of @p Zero to 0 and add it to @p user</span></td></tr>
+<tr><td class="num" id="LN189">189</td><td class="line"><span class='keyword'>static</span> isl_stat fixSetToZero(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_set *Zero, <span class='keyword'>void</span> *user) {</td></tr>
+<tr><td class="num" id="LN190">190</td><td class="line">  isl_union_set **User = (isl_union_set **)user;</td></tr>
+<tr><td class="num" id="LN191">191</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>unsigned</span> i = 0; i &lt; isl_set_dim(Zero, isl_dim_set); i++)</td></tr>
+<tr><td class="num" id="LN192">192</td><td class="line">    Zero = isl_set_fix_si(Zero, isl_dim_set, i, 0);</td></tr>
+<tr><td class="num" id="LN193">193</td><td class="line">  *User = isl_union_set_add_set(*User, Zero);</td></tr>
+<tr><td class="num" id="LN194">194</td><td class="line">  <span class='keyword'>return</span> isl_stat_ok;</td></tr>
+<tr><td class="num" id="LN195">195</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN196">196</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN197">197</td><td class="line"><span class='comment'>/// Compute the privatization dependences for a given dependency @p Map</span></td></tr>
+<tr><td class="num" id="LN198">198</td><td class="line"><span class='comment'>///</span></td></tr>
+<tr><td class="num" id="LN199">199</td><td class="line"><span class='comment'>/// Privatization dependences are widened original dependences which originate</span></td></tr>
+<tr><td class="num" id="LN200">200</td><td class="line"><span class='comment'>/// or end in a reduction access. To compute them we apply the transitive close</span></td></tr>
+<tr><td class="num" id="LN201">201</td><td class="line"><span class='comment'>/// of the reduction dependences (which maps each iteration of a reduction</span></td></tr>
+<tr><td class="num" id="LN202">202</td><td class="line"><span class='comment'>/// statement to all following ones) on the RAW/WAR/WAW dependences. The</span></td></tr>
+<tr><td class="num" id="LN203">203</td><td class="line"><span class='comment'>/// dependences which start or end at a reduction statement will be extended to</span></td></tr>
+<tr><td class="num" id="LN204">204</td><td class="line"><span class='comment'>/// depend on all following reduction statement iterations as well.</span></td></tr>
+<tr><td class="num" id="LN205">205</td><td class="line"><span class='comment'>/// Note: "Following" here means according to the reduction dependences.</span></td></tr>
+<tr><td class="num" id="LN206">206</td><td class="line"><span class='comment'>///</span></td></tr>
+<tr><td class="num" id="LN207">207</td><td class="line"><span class='comment'>/// For the input:</span></td></tr>
+<tr><td class="num" id="LN208">208</td><td class="line"><span class='comment'>///</span></td></tr>
+<tr><td class="num" id="LN209">209</td><td class="line"><span class='comment'>///  S0:   *sum = 0;</span></td></tr>
+<tr><td class="num" id="LN210">210</td><td class="line"><span class='comment'>///        for (int i = 0; i &lt; 1024; i++)</span></td></tr>
+<tr><td class="num" id="LN211">211</td><td class="line"><span class='comment'>///  S1:     *sum += i;</span></td></tr>
+<tr><td class="num" id="LN212">212</td><td class="line"><span class='comment'>///  S2:   *sum = *sum * 3;</span></td></tr>
+<tr><td class="num" id="LN213">213</td><td class="line"><span class='comment'>///</span></td></tr>
+<tr><td class="num" id="LN214">214</td><td class="line"><span class='comment'>/// we have the following dependences before we add privatization dependences:</span></td></tr>
+<tr><td class="num" id="LN215">215</td><td class="line"><span class='comment'>///</span></td></tr>
+<tr><td class="num" id="LN216">216</td><td class="line"><span class='comment'>///   RAW:</span></td></tr>
+<tr><td class="num" id="LN217">217</td><td class="line"><span class='comment'>///     { S0[] -&gt; S1[0]; S1[1023] -&gt; S2[] }</span></td></tr>
+<tr><td class="num" id="LN218">218</td><td class="line"><span class='comment'>///   WAR:</span></td></tr>
+<tr><td class="num" id="LN219">219</td><td class="line"><span class='comment'>///     {  }</span></td></tr>
+<tr><td class="num" id="LN220">220</td><td class="line"><span class='comment'>///   WAW:</span></td></tr>
+<tr><td class="num" id="LN221">221</td><td class="line"><span class='comment'>///     { S0[] -&gt; S1[0]; S1[1024] -&gt; S2[] }</span></td></tr>
+<tr><td class="num" id="LN222">222</td><td class="line"><span class='comment'>///   RED:</span></td></tr>
+<tr><td class="num" id="LN223">223</td><td class="line"><span class='comment'>///     { S1[i0] -&gt; S1[1 + i0] : i0 &gt;= 0 and i0 &lt;= 1022 }</span></td></tr>
+<tr><td class="num" id="LN224">224</td><td class="line"><span class='comment'>///</span></td></tr>
+<tr><td class="num" id="LN225">225</td><td class="line"><span class='comment'>/// and afterwards:</span></td></tr>
+<tr><td class="num" id="LN226">226</td><td class="line"><span class='comment'>///</span></td></tr>
+<tr><td class="num" id="LN227">227</td><td class="line"><span class='comment'>///   RAW:</span></td></tr>
+<tr><td class="num" id="LN228">228</td><td class="line"><span class='comment'>///     { S0[] -&gt; S1[i0] : i0 &gt;= 0 and i0 &lt;= 1023;</span></td></tr>
+<tr><td class="num" id="LN229">229</td><td class="line"><span class='comment'>///       S1[i0] -&gt; S2[] : i0 &gt;= 0 and i0 &lt;= 1023}</span></td></tr>
+<tr><td class="num" id="LN230">230</td><td class="line"><span class='comment'>///   WAR:</span></td></tr>
+<tr><td class="num" id="LN231">231</td><td class="line"><span class='comment'>///     {  }</span></td></tr>
+<tr><td class="num" id="LN232">232</td><td class="line"><span class='comment'>///   WAW:</span></td></tr>
+<tr><td class="num" id="LN233">233</td><td class="line"><span class='comment'>///     { S0[] -&gt; S1[i0] : i0 &gt;= 0 and i0 &lt;= 1023;</span></td></tr>
+<tr><td class="num" id="LN234">234</td><td class="line"><span class='comment'>///       S1[i0] -&gt; S2[] : i0 &gt;= 0 and i0 &lt;= 1023}</span></td></tr>
+<tr><td class="num" id="LN235">235</td><td class="line"><span class='comment'>///   RED:</span></td></tr>
+<tr><td class="num" id="LN236">236</td><td class="line"><span class='comment'>///     { S1[i0] -&gt; S1[1 + i0] : i0 &gt;= 0 and i0 &lt;= 1022 }</span></td></tr>
+<tr><td class="num" id="LN237">237</td><td class="line"><span class='comment'>///</span></td></tr>
+<tr><td class="num" id="LN238">238</td><td class="line"><span class='comment'>/// Note: This function also computes the (reverse) transitive closure of the</span></td></tr>
+<tr><td class="num" id="LN239">239</td><td class="line"><span class='comment'>///       reduction dependences.</span></td></tr>
+<tr><td class="num" id="LN240">240</td><td class="line"><span class='keyword'>void</span> Dependences::addPrivatizationDependences() {</td></tr>
+<tr><td class="num" id="LN241">241</td><td class="line">  isl_union_map *PrivRAW, *PrivWAW, *PrivWAR;</td></tr>
+<tr><td class="num" id="LN242">242</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN243">243</td><td class="line">  <span class='comment'>// The transitive closure might be over approximated, thus could lead to</span></td></tr>
+<tr><td class="num" id="LN244">244</td><td class="line">  <span class='comment'>// dependency cycles in the privatization dependences. To make sure this</span></td></tr>
+<tr><td class="num" id="LN245">245</td><td class="line">  <span class='comment'>// will not happen we remove all negative dependences after we computed</span></td></tr>
+<tr><td class="num" id="LN246">246</td><td class="line">  <span class='comment'>// the transitive closure.</span></td></tr>
+<tr><td class="num" id="LN247">247</td><td class="line">  TC_RED = isl_union_map_transitive_closure(isl_union_map_copy(RED), <span class='keyword'>nullptr</span>);</td></tr>
+<tr><td class="num" id="LN248">248</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN249">249</td><td class="line">  <span class='comment'>// FIXME: Apply the current schedule instead of assuming the identity schedule</span></td></tr>
+<tr><td class="num" id="LN250">250</td><td class="line">  <span class='comment'>//        here. The current approach is only valid as long as we compute the</span></td></tr>
+<tr><td class="num" id="LN251">251</td><td class="line">  <span class='comment'>//        dependences only with the initial (identity schedule). Any other</span></td></tr>
+<tr><td class="num" id="LN252">252</td><td class="line">  <span class='comment'>//        schedule could change "the direction of the backward dependences" we</span></td></tr>
+<tr><td class="num" id="LN253">253</td><td class="line">  <span class='comment'>//        want to eliminate here.</span></td></tr>
+<tr><td class="num" id="LN254">254</td><td class="line">  isl_union_set *UDeltas = isl_union_map_deltas(isl_union_map_copy(TC_RED));</td></tr>
+<tr><td class="num" id="LN255">255</td><td class="line">  isl_union_set *Universe = isl_union_set_universe(isl_union_set_copy(UDeltas));</td></tr>
+<tr><td class="num" id="LN256">256</td><td class="line">  isl_union_set *Zero = isl_union_set_empty(isl_union_set_get_space(Universe));</td></tr>
+<tr><td class="num" id="LN257">257</td><td class="line">  isl_union_set_foreach_set(Universe, fixSetToZero, &amp;Zero);</td></tr>
+<tr><td class="num" id="LN258">258</td><td class="line">  isl_union_map *NonPositive = isl_union_set_lex_le_union_set(UDeltas, Zero);</td></tr>
+<tr><td class="num" id="LN259">259</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN260">260</td><td class="line">  TC_RED = isl_union_map_subtract(TC_RED, NonPositive);</td></tr>
+<tr><td class="num" id="LN261">261</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN262">262</td><td class="line">  TC_RED = isl_union_map_union(</td></tr>
+<tr><td class="num" id="LN263">263</td><td class="line">      TC_RED, isl_union_map_reverse(isl_union_map_copy(TC_RED)));</td></tr>
+<tr><td class="num" id="LN264">264</td><td class="line">  TC_RED = isl_union_map_coalesce(TC_RED);</td></tr>
+<tr><td class="num" id="LN265">265</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN266">266</td><td class="line">  isl_union_map **Maps[] = {&amp;RAW, &amp;WAW, &amp;WAR};</td></tr>
+<tr><td class="num" id="LN267">267</td><td class="line">  isl_union_map **PrivMaps[] = {&amp;PrivRAW, &amp;PrivWAW, &amp;PrivWAR};</td></tr>
+<tr><td class="num" id="LN268">268</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>unsigned</span> u = 0; u &lt; 3; u++) {</td></tr>
+<tr><td class="num" id="LN269">269</td><td class="line">    isl_union_map **Map = Maps[u], **PrivMap = PrivMaps[u];</td></tr>
+<tr><td class="num" id="LN270">270</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN271">271</td><td class="line">    *PrivMap = isl_union_map_apply_range(isl_union_map_copy(*Map),</td></tr>
+<tr><td class="num" id="LN272">272</td><td class="line">                                         isl_union_map_copy(TC_RED));</td></tr>
+<tr><td class="num" id="LN273">273</td><td class="line">    *PrivMap = isl_union_map_union(</td></tr>
+<tr><td class="num" id="LN274">274</td><td class="line">        *PrivMap, isl_union_map_apply_range(isl_union_map_copy(TC_RED),</td></tr>
+<tr><td class="num" id="LN275">275</td><td class="line">                                            isl_union_map_copy(*Map)));</td></tr>
+<tr><td class="num" id="LN276">276</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN277">277</td><td class="line">    *Map = isl_union_map_union(*Map, *PrivMap);</td></tr>
+<tr><td class="num" id="LN278">278</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN279">279</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN280">280</td><td class="line">  isl_union_set_free(Universe);</td></tr>
+<tr><td class="num" id="LN281">281</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN282">282</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN283">283</td><td class="line"><span class='keyword'>static</span> isl_stat getMaxScheduleDim(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_map *Map, <span class='keyword'>void</span> *User) {</td></tr>
+<tr><td class="num" id="LN284">284</td><td class="line">  <span class='keyword'>unsigned</span> <span class='keyword'>int</span> *MaxScheduleDim = (<span class='keyword'>unsigned</span> <span class='keyword'>int</span> *)User;</td></tr>
+<tr><td class="num" id="LN285">285</td><td class="line">  *MaxScheduleDim = std::max(*MaxScheduleDim, isl_map_dim(Map, isl_dim_out));</td></tr>
+<tr><td class="num" id="LN286">286</td><td class="line">  isl_map_free(Map);</td></tr>
+<tr><td class="num" id="LN287">287</td><td class="line">  <span class='keyword'>return</span> isl_stat_ok;</td></tr>
+<tr><td class="num" id="LN288">288</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN289">289</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN290">290</td><td class="line"><span class='keyword'>static</span> <span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_union_map *</td></tr>
+<tr><td class="num" id="LN291">291</td><td class="line">addZeroPaddingToSchedule(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_union_map *Schedule) {</td></tr>
+<tr><td class="num" id="LN292">292</td><td class="line">  <span class='keyword'>unsigned</span> <span class='keyword'>int</span> MaxScheduleDim = 0;</td></tr>
+<tr><td class="num" id="LN293">293</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN294">294</td><td class="line">  isl_union_map_foreach_map(Schedule, getMaxScheduleDim, &amp;MaxScheduleDim);</td></tr>
+<tr><td class="num" id="LN295">295</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN296">296</td><td class="line">  <span class='keyword'>auto</span> ExtensionMap = isl_union_map_empty(isl_union_map_get_space(Schedule));</td></tr>
+<tr><td class="num" id="LN297">297</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>unsigned</span> <span class='keyword'>int</span> i = 0; i &lt;= MaxScheduleDim; i++) {</td></tr>
+<tr><td class="num" id="LN298">298</td><td class="line">    <span class='keyword'>auto</span> *Map = isl_map_identity(</td></tr>
+<tr><td class="num" id="LN299">299</td><td class="line">        isl_space_alloc(isl_union_map_get_ctx(Schedule), 0, i, i));</td></tr>
+<tr><td class="num" id="LN300">300</td><td class="line">    Map = isl_map_add_dims(Map, isl_dim_out, MaxScheduleDim - i);</td></tr>
+<tr><td class="num" id="LN301">301</td><td class="line">    <span class='keyword'>for</span> (<span class='keyword'>unsigned</span> <span class='keyword'>int</span> j = 0; j &lt; MaxScheduleDim - i; j++)</td></tr>
+<tr><td class="num" id="LN302">302</td><td class="line">      Map = isl_map_fix_si(Map, isl_dim_out, i + j, 0);</td></tr>
+<tr><td class="num" id="LN303">303</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN304">304</td><td class="line">    ExtensionMap = isl_union_map_add_map(ExtensionMap, Map);</td></tr>
+<tr><td class="num" id="LN305">305</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN306">306</td><td class="line">  Schedule = isl_union_map_apply_range(Schedule, ExtensionMap);</td></tr>
+<tr><td class="num" id="LN307">307</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN308">308</td><td class="line">  <span class='keyword'>return</span> Schedule;</td></tr>
+<tr><td class="num" id="LN309">309</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN310">310</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN311">311</td><td class="line"><span class='keyword'>static</span> <span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_union_flow *buildFlow(__isl_keep isl_union_map *Snk,</td></tr>
+<tr><td class="num" id="LN312">312</td><td class="line">                                            __isl_keep isl_union_map *Src,</td></tr>
+<tr><td class="num" id="LN313">313</td><td class="line">                                            __isl_keep isl_union_map *MaySrc,</td></tr>
+<tr><td class="num" id="LN314">314</td><td class="line">                                            __isl_keep isl_schedule *Schedule) {</td></tr>
+<tr><td class="num" id="LN315">315</td><td class="line">  isl_union_access_info *AI;</td></tr>
+<tr><td class="num" id="LN316">316</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN317">317</td><td class="line">  AI = isl_union_access_info_from_sink(isl_union_map_copy(Snk));</td></tr>
+<tr><td class="num" id="LN318">318</td><td class="line">  AI = isl_union_access_info_set_may_source(AI, isl_union_map_copy(MaySrc));</td></tr>
+<tr><td class="num" id="LN319">319</td><td class="line">  <span class='keyword'>if</span> (Src)</td></tr>
+<tr><td class="num" id="LN320">320</td><td class="line">    AI = isl_union_access_info_set_must_source(AI, isl_union_map_copy(Src));</td></tr>
+<tr><td class="num" id="LN321">321</td><td class="line">  AI = isl_union_access_info_set_schedule(AI, isl_schedule_copy(Schedule));</td></tr>
+<tr><td class="num" id="LN322">322</td><td class="line">  <span class='keyword'>auto</span> Flow = isl_union_access_info_compute_flow(AI);</td></tr>
+<tr><td class="num" id="LN323">323</td><td class="line">  <span class='macro'>DEBUG(<span class='keyword'>if</span> (!Flow) dbgs() &lt;&lt; <span class='string_literal'>"last error: "<span class='expansion'>do { } while (false)</span></span></span></td></tr>
+<tr><td class="num" id="LN324">324</td><td class="line">                          <span class='macro'>&lt;&lt; isl_ctx_last_error(isl_schedule_get_ctx(Schedule))<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN325">325</td><td class="line">                          <span class='macro'>&lt;&lt; '\n';)<span class='expansion'>do { } while (false)</span></span>;</td></tr>
+<tr><td class="num" id="LN326">326</td><td class="line">  <span class='keyword'>return</span> Flow;</td></tr>
+<tr><td class="num" id="LN327">327</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN328">328</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN329">329</td><td class="line"><span class='keyword'>void</span> Dependences::calculateDependences(Scop &amp;S) {</td></tr>
+<tr><td class="num" id="LN330">330</td><td class="line">  isl_union_map *Read, *Write, *MayWrite, *AccessSchedule, *StmtSchedule;</td></tr>
+<tr><td class="num" id="LN331">331</td><td class="line">  isl_schedule *Schedule;</td></tr>
+<tr><td class="num" id="LN332">332</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN333">333</td><td class="line">  <span class='macro'>DEBUG(dbgs() &lt;&lt; <span class='string_literal'>"Scop: \n"</span> &lt;&lt; S &lt;&lt; <span class='string_literal'>"\n"</span>)<span class='expansion'>do { } while (false)</span></span>;</td></tr>
+<tr><td class="num" id="LN334">334</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN335">335</td><td class="line">  collectInfo(S, &amp;Read, &amp;Write, &amp;MayWrite, &amp;AccessSchedule, &amp;StmtSchedule,</td></tr>
+<tr><td class="num" id="LN336">336</td><td class="line">              Level);</td></tr>
+<tr><td class="num" id="LN337">337</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN338">338</td><td class="line">  <span class='keyword'>bool</span> HasReductions = !isl_union_map_is_empty(AccessSchedule);</td></tr>
+<tr><td class="num" id="LN339">339</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN340">340</td><td class="line">  <span class='macro'>DEBUG(dbgs() &lt;&lt; <span class='string_literal'>"Read: "</span> &lt;&lt; Read &lt;&lt; '\n';<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN341">341</td><td class="line">        <span class='macro'>dbgs() &lt;&lt; <span class='string_literal'>"Write: "</span> &lt;&lt; Write &lt;&lt; '\n';<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN342">342</td><td class="line">        <span class='macro'>dbgs() &lt;&lt; <span class='string_literal'>"MayWrite: "</span> &lt;&lt; MayWrite &lt;&lt; '\n';<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN343">343</td><td class="line">        <span class='macro'>dbgs() &lt;&lt; <span class='string_literal'>"AccessSchedule: "</span> &lt;&lt; AccessSchedule &lt;&lt; '\n';<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN344">344</td><td class="line">        <span class='macro'>dbgs() &lt;&lt; <span class='string_literal'>"StmtSchedule: "</span> &lt;&lt; StmtSchedule &lt;&lt; '\n';)<span class='expansion'>do { } while (false)</span></span>;</td></tr>
+<tr><td class="num" id="LN345">345</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN346">346</td><td class="line">  <span class='keyword'>if</span> (!HasReductions) {</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path1" class="msg msgControl" style="margin-left:3ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexControl">1</div></td><td>Taking false branch</td><td><div class="PathNav"><a href="#Path2" title="Next event (2)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN347">347</td><td class="line">    isl_union_map_free(AccessSchedule);</td></tr>
+<tr><td class="num" id="LN348">348</td><td class="line">    Schedule = S.getScheduleTree();</td></tr>
+<tr><td class="num" id="LN349">349</td><td class="line">    <span class='comment'>// Tag the schedule tree if we want fine-grain dependence info</span></td></tr>
+<tr><td class="num" id="LN350">350</td><td class="line">    <span class='keyword'>if</span> (Level &gt; AL_Statement) {</td></tr>
+<tr><td class="num" id="LN351">351</td><td class="line">      <span class='keyword'>auto</span> TaggedDom = isl_union_map_domain((isl_union_map_copy(StmtSchedule)));</td></tr>
+<tr><td class="num" id="LN352">352</td><td class="line">      <span class='keyword'>auto</span> TaggedMap = isl_union_set_unwrap(TaggedDom);</td></tr>
+<tr><td class="num" id="LN353">353</td><td class="line">      <span class='keyword'>auto</span> Tags = isl_union_map_domain_map_union_pw_multi_aff(TaggedMap);</td></tr>
+<tr><td class="num" id="LN354">354</td><td class="line">      Schedule = isl_schedule_pullback_union_pw_multi_aff(Schedule, Tags);</td></tr>
+<tr><td class="num" id="LN355">355</td><td class="line">    }</td></tr>
+<tr><td class="num" id="LN356">356</td><td class="line">  } <span class='keyword'>else</span> {</td></tr>
+<tr><td class="num" id="LN357">357</td><td class="line">    <span class='keyword'>auto</span> *ScheduleMap =</td></tr>
+<tr><td class="num" id="LN358">358</td><td class="line">        isl_union_map_union(AccessSchedule, isl_union_map_copy(StmtSchedule));</td></tr>
+<tr><td class="num" id="LN359">359</td><td class="line">    Schedule = isl_schedule_from_domain(</td></tr>
+<tr><td class="num" id="LN360">360</td><td class="line">        isl_union_map_domain(isl_union_map_copy(ScheduleMap)));</td></tr>
+<tr><td class="num" id="LN361">361</td><td class="line">    <span class='keyword'>if</span> (!isl_union_map_is_empty(ScheduleMap)) {</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path2" class="msg msgControl" style="margin-left:5ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexControl">2</div></td><td><div class="PathNav"><a href="#Path1" title="Previous event (1)">&#x2190;</a></div></td></td><td>Taking false branch</td><td><div class="PathNav"><a href="#Path3" title="Next event (3)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN362">362</td><td class="line">      ScheduleMap = addZeroPaddingToSchedule(ScheduleMap);</td></tr>
+<tr><td class="num" id="LN363">363</td><td class="line">      Schedule = isl_schedule_insert_partial_schedule(</td></tr>
+<tr><td class="num" id="LN364">364</td><td class="line">          Schedule, isl_multi_union_pw_aff_from_union_map(ScheduleMap));</td></tr>
+<tr><td class="num" id="LN365">365</td><td class="line">    } <span class='keyword'>else</span> {</td></tr>
+<tr><td class="num" id="LN366">366</td><td class="line">      isl_union_map_free(ScheduleMap);</td></tr>
+<tr><td class="num" id="LN367">367</td><td class="line">    }</td></tr>
+<tr><td class="num" id="LN368">368</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN369">369</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN370">370</td><td class="line">  <span class='keyword'>long</span> MaxOpsOld = isl_ctx_get_max_operations(IslCtx.get());</td></tr>
+<tr><td class="num" id="LN371">371</td><td class="line">  <span class='keyword'>if</span> (OptComputeOut) {</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path3" class="msg msgControl" style="margin-left:3ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexControl">3</div></td><td><div class="PathNav"><a href="#Path2" title="Previous event (2)">&#x2190;</a></div></td></td><td>Taking false branch</td><td><div class="PathNav"><a href="#Path4" title="Next event (4)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN372">372</td><td class="line">    isl_ctx_reset_operations(IslCtx.get());</td></tr>
+<tr><td class="num" id="LN373">373</td><td class="line">    isl_ctx_set_max_operations(IslCtx.get(), OptComputeOut);</td></tr>
+<tr><td class="num" id="LN374">374</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN375">375</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN376">376</td><td class="line">  <span class='keyword'>auto</span> OnErrorStatus = isl_options_get_on_error(IslCtx.get());</td></tr>
+<tr><td class="num" id="LN377">377</td><td class="line">  isl_options_set_on_error(IslCtx.get(), <span class='macro'>ISL_ON_ERROR_CONTINUE<span class='expansion'>1</span></span>);</td></tr>
+<tr><td class="num" id="LN378">378</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN379">379</td><td class="line">  <span class='macro'>DEBUG(dbgs() &lt;&lt; <span class='string_literal'>"Read: "</span> &lt;&lt; Read &lt;&lt; <span class='string_literal'>"\n"</span>;<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN380">380</td><td class="line">        <span class='macro'>dbgs() &lt;&lt; <span class='string_literal'>"Write: "</span> &lt;&lt; Write &lt;&lt; <span class='string_literal'>"\n"</span>;<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN381">381</td><td class="line">        <span class='macro'>dbgs() &lt;&lt; <span class='string_literal'>"MayWrite: "</span> &lt;&lt; MayWrite &lt;&lt; <span class='string_literal'>"\n"</span>;<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN382">382</td><td class="line">        <span class='macro'>dbgs() &lt;&lt; <span class='string_literal'>"Schedule: "</span> &lt;&lt; Schedule &lt;&lt; <span class='string_literal'>"\n"</span>)<span class='expansion'>do { } while (false)</span></span>;</td></tr>
+<tr><td class="num" id="LN383">383</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN384">384</td><td class="line">  RAW = WAW = WAR = RED = <span class='keyword'>nullptr</span>;</td></tr>
+<tr><td class="num" id="LN385">385</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN386">386</td><td class="line">  <span class='keyword'>if</span> (OptAnalysisType == VALUE_BASED_ANALYSIS) {</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path4" class="msg msgControl" style="margin-left:3ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexControl">4</div></td><td><div class="PathNav"><a href="#Path3" title="Previous event (3)">&#x2190;</a></div></td></td><td>Taking true branch</td><td><div class="PathNav"><a href="#Path5" title="Next event (5)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN387">387</td><td class="line">    isl_union_flow *Flow;</td></tr>
+<tr><td class="num" id="LN388">388</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN389">389</td><td class="line">    Flow = buildFlow(Read, Write, MayWrite, Schedule);</td></tr>
+<tr><td class="num" id="LN390">390</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN391">391</td><td class="line">    RAW = isl_union_flow_get_must_dependence(Flow);</td></tr>
+<tr><td class="num" id="LN392">392</td><td class="line">    isl_union_flow_free(Flow);</td></tr>
+<tr><td class="num" id="LN393">393</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN394">394</td><td class="line">    Flow = buildFlow(Write, Write, Read, Schedule);</td></tr>
+<tr><td class="num" id="LN395">395</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN396">396</td><td class="line">    WAW = isl_union_flow_get_must_dependence(Flow);</td></tr>
+<tr><td class="num" id="LN397">397</td><td class="line">    WAR = isl_union_flow_get_may_dependence(Flow);</td></tr>
+<tr><td class="num" id="LN398">398</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN399">399</td><td class="line">    <span class='comment'>// This subtraction is needed to obtain the same results as were given by</span></td></tr>
+<tr><td class="num" id="LN400">400</td><td class="line">    <span class='comment'>// isl_union_map_compute_flow. For large sets this may add some compile-time</span></td></tr>
+<tr><td class="num" id="LN401">401</td><td class="line">    <span class='comment'>// cost. As there does not seem to be a need to distinguish between WAW and</span></td></tr>
+<tr><td class="num" id="LN402">402</td><td class="line">    <span class='comment'>// WAR, refactoring Polly to only track general non-flow dependences may</span></td></tr>
+<tr><td class="num" id="LN403">403</td><td class="line">    <span class='comment'>// improve performance.</span></td></tr>
+<tr><td class="num" id="LN404">404</td><td class="line">    WAR = isl_union_map_subtract(WAR, isl_union_map_copy(WAW));</td></tr>
+<tr><td class="num" id="LN405">405</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN406">406</td><td class="line">    isl_union_flow_free(Flow);</td></tr>
+<tr><td class="num" id="LN407">407</td><td class="line">    isl_schedule_free(Schedule);</td></tr>
+<tr><td class="num" id="LN408">408</td><td class="line">  } <span class='keyword'>else</span> {</td></tr>
+<tr><td class="num" id="LN409">409</td><td class="line">    isl_union_flow *Flow;</td></tr>
+<tr><td class="num" id="LN410">410</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN411">411</td><td class="line">    Write = isl_union_map_union(Write, isl_union_map_copy(MayWrite));</td></tr>
+<tr><td class="num" id="LN412">412</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN413">413</td><td class="line">    Flow = buildFlow(Read, <span class='keyword'>nullptr</span>, Write, Schedule);</td></tr>
+<tr><td class="num" id="LN414">414</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN415">415</td><td class="line">    RAW = isl_union_flow_get_may_dependence(Flow);</td></tr>
+<tr><td class="num" id="LN416">416</td><td class="line">    isl_union_flow_free(Flow);</td></tr>
+<tr><td class="num" id="LN417">417</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN418">418</td><td class="line">    Flow = buildFlow(Write, <span class='keyword'>nullptr</span>, Read, Schedule);</td></tr>
+<tr><td class="num" id="LN419">419</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN420">420</td><td class="line">    WAR = isl_union_flow_get_may_dependence(Flow);</td></tr>
+<tr><td class="num" id="LN421">421</td><td class="line">    isl_union_flow_free(Flow);</td></tr>
+<tr><td class="num" id="LN422">422</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN423">423</td><td class="line">    Flow = buildFlow(Write, <span class='keyword'>nullptr</span>, Write, Schedule);</td></tr>
+<tr><td class="num" id="LN424">424</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN425">425</td><td class="line">    WAW = isl_union_flow_get_may_dependence(Flow);</td></tr>
+<tr><td class="num" id="LN426">426</td><td class="line">    isl_union_flow_free(Flow);</td></tr>
+<tr><td class="num" id="LN427">427</td><td class="line">    isl_schedule_free(Schedule);</td></tr>
+<tr><td class="num" id="LN428">428</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN429">429</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN430">430</td><td class="line">  isl_union_map_free(MayWrite);</td></tr>
+<tr><td class="num" id="LN431">431</td><td class="line">  isl_union_map_free(Write);</td></tr>
+<tr><td class="num" id="LN432">432</td><td class="line">  isl_union_map_free(Read);</td></tr>
+<tr><td class="num" id="LN433">433</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN434">434</td><td class="line">  RAW = isl_union_map_coalesce(RAW);</td></tr>
+<tr><td class="num" id="LN435">435</td><td class="line">  WAW = isl_union_map_coalesce(WAW);</td></tr>
+<tr><td class="num" id="LN436">436</td><td class="line">  WAR = isl_union_map_coalesce(WAR);</td></tr>
+<tr><td class="num" id="LN437">437</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN438">438</td><td class="line">  <span class='keyword'>if</span> (isl_ctx_last_error(IslCtx.get()) == isl_error_quota) {</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path5" class="msg msgControl" style="margin-left:3ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexControl">5</div></td><td><div class="PathNav"><a href="#Path4" title="Previous event (4)">&#x2190;</a></div></td></td><td>Taking false branch</td><td><div class="PathNav"><a href="#Path6" title="Next event (6)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN439">439</td><td class="line">    isl_union_map_free(RAW);</td></tr>
+<tr><td class="num" id="LN440">440</td><td class="line">    isl_union_map_free(WAW);</td></tr>
+<tr><td class="num" id="LN441">441</td><td class="line">    isl_union_map_free(WAR);</td></tr>
+<tr><td class="num" id="LN442">442</td><td class="line">    RAW = WAW = WAR = <span class='keyword'>nullptr</span>;</td></tr>
+<tr><td class="num" id="LN443">443</td><td class="line">    isl_ctx_reset_error(IslCtx.get());</td></tr>
+<tr><td class="num" id="LN444">444</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN445">445</td><td class="line">  isl_options_set_on_error(IslCtx.get(), OnErrorStatus);</td></tr>
+<tr><td class="num" id="LN446">446</td><td class="line">  isl_ctx_reset_operations(IslCtx.get());</td></tr>
+<tr><td class="num" id="LN447">447</td><td class="line">  isl_ctx_set_max_operations(IslCtx.get(), MaxOpsOld);</td></tr>
+<tr><td class="num" id="LN448">448</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN449">449</td><td class="line">  <span class='comment'>// Drop out early, as the remaining computations are only needed for</span></td></tr>
+<tr><td class="num" id="LN450">450</td><td class="line">  <span class='comment'>// reduction dependences or dependences that are finer than statement</span></td></tr>
+<tr><td class="num" id="LN451">451</td><td class="line">  <span class='comment'>// level dependences.</span></td></tr>
+<tr><td class="num" id="LN452">452</td><td class="line">  <span class='keyword'>if</span> (!HasReductions &amp;&amp; Level == AL_Statement) {</td></tr>
+<tr><td class="num" id="LN453">453</td><td class="line">    TC_RED = isl_union_map_empty(isl_union_map_get_space(StmtSchedule));</td></tr>
+<tr><td class="num" id="LN454">454</td><td class="line">    isl_union_map_free(StmtSchedule);</td></tr>
+<tr><td class="num" id="LN455">455</td><td class="line">    <span class='keyword'>return</span>;</td></tr>
+<tr><td class="num" id="LN456">456</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN457">457</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN458">458</td><td class="line">  isl_union_map *STMT_RAW, *STMT_WAW, *STMT_WAR;</td></tr>
+<tr><td class="num" id="LN459">459</td><td class="line">  STMT_RAW = isl_union_map_intersect_domain(</td></tr>
+<tr><td class="num" id="LN460">460</td><td class="line">      isl_union_map_copy(RAW),</td></tr>
+<tr><td class="num" id="LN461">461</td><td class="line">      isl_union_map_domain(isl_union_map_copy(StmtSchedule)));</td></tr>
+<tr><td class="num" id="LN462">462</td><td class="line">  STMT_WAW = isl_union_map_intersect_domain(</td></tr>
+<tr><td class="num" id="LN463">463</td><td class="line">      isl_union_map_copy(WAW),</td></tr>
+<tr><td class="num" id="LN464">464</td><td class="line">      isl_union_map_domain(isl_union_map_copy(StmtSchedule)));</td></tr>
+<tr><td class="num" id="LN465">465</td><td class="line">  STMT_WAR = isl_union_map_intersect_domain(isl_union_map_copy(WAR),</td></tr>
+<tr><td class="num" id="LN466">466</td><td class="line">                                            isl_union_map_domain(StmtSchedule));</td></tr>
+<tr><td class="num" id="LN467">467</td><td class="line">  <span class='macro'>DEBUG({<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN468">468</td><td class="line">    <span class='macro'>dbgs() &lt;&lt; <span class='string_literal'>"Wrapped Dependences:\n"</span>;<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN469">469</td><td class="line">    <span class='macro'>dump();<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN470">470</td><td class="line">    <span class='macro'>dbgs() &lt;&lt; <span class='string_literal'>"\n"</span>;<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN471">471</td><td class="line">  <span class='macro'>})<span class='expansion'>do { } while (false)</span></span>;</td></tr>
+<tr><td class="num" id="LN472">472</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN473">473</td><td class="line">  <span class='comment'>// To handle reduction dependences we proceed as follows:</span></td></tr>
+<tr><td class="num" id="LN474">474</td><td class="line">  <span class='comment'>// 1) Aggregate all possible reduction dependences, namely all self</span></td></tr>
+<tr><td class="num" id="LN475">475</td><td class="line">  <span class='comment'>//    dependences on reduction like statements.</span></td></tr>
+<tr><td class="num" id="LN476">476</td><td class="line">  <span class='comment'>// 2) Intersect them with the actual RAW &amp; WAW dependences to the get the</span></td></tr>
+<tr><td class="num" id="LN477">477</td><td class="line">  <span class='comment'>//    actual reduction dependences. This will ensure the load/store memory</span></td></tr>
+<tr><td class="num" id="LN478">478</td><td class="line">  <span class='comment'>//    addresses were __identical__ in the two iterations of the statement.</span></td></tr>
+<tr><td class="num" id="LN479">479</td><td class="line">  <span class='comment'>// 3) Relax the original RAW and WAW dependences by subtracting the actual</span></td></tr>
+<tr><td class="num" id="LN480">480</td><td class="line">  <span class='comment'>//    reduction dependences. Binary reductions (sum += A[i]) cause both, and</span></td></tr>
+<tr><td class="num" id="LN481">481</td><td class="line">  <span class='comment'>//    the same, RAW and WAW dependences.</span></td></tr>
+<tr><td class="num" id="LN482">482</td><td class="line">  <span class='comment'>// 4) Add the privatization dependences which are widened versions of</span></td></tr>
+<tr><td class="num" id="LN483">483</td><td class="line">  <span class='comment'>//    already present dependences. They model the effect of manual</span></td></tr>
+<tr><td class="num" id="LN484">484</td><td class="line">  <span class='comment'>//    privatization at the outermost possible place (namely after the last</span></td></tr>
+<tr><td class="num" id="LN485">485</td><td class="line">  <span class='comment'>//    write and before the first access to a reduction location).</span></td></tr>
+<tr><td class="num" id="LN486">486</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN487">487</td><td class="line">  <span class='comment'>// Step 1)</span></td></tr>
+<tr><td class="num" id="LN488">488</td><td class="line">  RED = isl_union_map_empty(isl_union_map_get_space(RAW));</td></tr>
+<tr><td class="num" id="LN489">489</td><td class="line">  <span class='keyword'>for</span> (ScopStmt &amp;Stmt : S) {</td></tr>
+<tr><td class="num" id="LN490">490</td><td class="line">    <span class='keyword'>for</span> (MemoryAccess *MA : Stmt) {</td></tr>
+<tr><td class="num" id="LN491">491</td><td class="line">      <span class='keyword'>if</span> (!MA-&gt;isReductionLike())</td></tr>
+<tr><td class="num" id="LN492">492</td><td class="line">        <span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN493">493</td><td class="line">      isl_set *AccDomW = isl_map_wrap(MA-&gt;getAccessRelation());</td></tr>
+<tr><td class="num" id="LN494">494</td><td class="line">      isl_map *Identity =</td></tr>
+<tr><td class="num" id="LN495">495</td><td class="line">          isl_map_from_domain_and_range(isl_set_copy(AccDomW), AccDomW);</td></tr>
+<tr><td class="num" id="LN496">496</td><td class="line">      RED = isl_union_map_add_map(RED, Identity);</td></tr>
+<tr><td class="num" id="LN497">497</td><td class="line">    }</td></tr>
+<tr><td class="num" id="LN498">498</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN499">499</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN500">500</td><td class="line">  <span class='comment'>// Step 2)</span></td></tr>
+<tr><td class="num" id="LN501">501</td><td class="line">  RED = isl_union_map_intersect(RED, isl_union_map_copy(RAW));</td></tr>
+<tr><td class="num" id="LN502">502</td><td class="line">  RED = isl_union_map_intersect(RED, isl_union_map_copy(WAW));</td></tr>
+<tr><td class="num" id="LN503">503</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN504">504</td><td class="line">  <span class='keyword'>if</span> (!isl_union_map_is_empty(RED)) {</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path6" class="msg msgControl" style="margin-left:3ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexControl">6</div></td><td><div class="PathNav"><a href="#Path5" title="Previous event (5)">&#x2190;</a></div></td></td><td>Taking false branch</td><td><div class="PathNav"><a href="#Path7" title="Next event (7)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN505">505</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN506">506</td><td class="line">    <span class='comment'>// Step 3)</span></td></tr>
+<tr><td class="num" id="LN507">507</td><td class="line">    RAW = isl_union_map_subtract(RAW, isl_union_map_copy(RED));</td></tr>
+<tr><td class="num" id="LN508">508</td><td class="line">    WAW = isl_union_map_subtract(WAW, isl_union_map_copy(RED));</td></tr>
+<tr><td class="num" id="LN509">509</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN510">510</td><td class="line">    <span class='comment'>// Step 4)</span></td></tr>
+<tr><td class="num" id="LN511">511</td><td class="line">    addPrivatizationDependences();</td></tr>
+<tr><td class="num" id="LN512">512</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN513">513</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN514">514</td><td class="line">  <span class='macro'>DEBUG({<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN515">515</td><td class="line">    <span class='macro'>dbgs() &lt;&lt; <span class='string_literal'>"Final Wrapped Dependences:\n"</span>;<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN516">516</td><td class="line">    <span class='macro'>dump();<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN517">517</td><td class="line">    <span class='macro'>dbgs() &lt;&lt; <span class='string_literal'>"\n"</span>;<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN518">518</td><td class="line">  <span class='macro'>})<span class='expansion'>do { } while (false)</span></span>;</td></tr>
+<tr><td class="num" id="LN519">519</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN520">520</td><td class="line">  <span class='comment'>// RED_SIN is used to collect all reduction dependences again after we</span></td></tr>
+<tr><td class="num" id="LN521">521</td><td class="line">  <span class='comment'>// split them according to the causing memory accesses. The current assumption</span></td></tr>
+<tr><td class="num" id="LN522">522</td><td class="line">  <span class='comment'>// is that our method of splitting will not have any leftovers. In the end</span></td></tr>
+<tr><td class="num" id="LN523">523</td><td class="line">  <span class='comment'>// we validate this assumption until we have more confidence in this method.</span></td></tr>
+<tr><td class="num" id="LN524">524</td><td class="line">  isl_union_map *RED_SIN = isl_union_map_empty(isl_union_map_get_space(RAW));</td></tr>
+<tr><td class="num" id="LN525">525</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN526">526</td><td class="line">  <span class='comment'>// For each reduction like memory access, check if there are reduction</span></td></tr>
+<tr><td class="num" id="LN527">527</td><td class="line">  <span class='comment'>// dependences with the access relation of the memory access as a domain</span></td></tr>
+<tr><td class="num" id="LN528">528</td><td class="line">  <span class='comment'>// (wrapped space!). If so these dependences are caused by this memory access.</span></td></tr>
+<tr><td class="num" id="LN529">529</td><td class="line">  <span class='comment'>// We then move this portion of reduction dependences back to the statement -&gt;</span></td></tr>
+<tr><td class="num" id="LN530">530</td><td class="line">  <span class='comment'>// statement space and add a mapping from the memory access to these</span></td></tr>
+<tr><td class="num" id="LN531">531</td><td class="line">  <span class='comment'>// dependences.</span></td></tr>
+<tr><td class="num" id="LN532">532</td><td class="line">  <span class='keyword'>for</span> (ScopStmt &amp;Stmt : S) {</td></tr>
+<tr><td class="num" id="LN533">533</td><td class="line">    <span class='keyword'>for</span> (MemoryAccess *MA <span class="mrange">:</span> Stmt) {</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path7" class="msg msgEvent" style="margin-left:27ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexEvent">7</div></td><td><div class="PathNav"><a href="#Path6" title="Previous event (6)">&#x2190;</a></div></td></td><td>Assuming '__begin' is not equal to '__end'</td><td><div class="PathNav"><a href="#Path8" title="Next event (8)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN534">534</td><td class="line">      <span class='keyword'>if</span> (!MA-&gt;isReductionLike())</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path8" class="msg msgControl" style="margin-left:7ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexControl">8</div></td><td><div class="PathNav"><a href="#Path7" title="Previous event (7)">&#x2190;</a></div></td></td><td>Taking false branch</td><td><div class="PathNav"><a href="#Path9" title="Next event (9)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN535">535</td><td class="line">        <span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN536">536</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN537">537</td><td class="line">      isl_set *AccDomW = isl_map_wrap(MA-&gt;getAccessRelation());</td></tr>
+<tr><td class="num" id="LN538">538</td><td class="line">      isl_union_map *AccRedDepU = <span class="mrange">isl_union_map_intersect_domain(</td></tr></span>
+<tr><td class="num"></td><td class="line"><div id="Path9" class="msg msgEvent" style="margin-left:35ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexEvent">9</div></td><td><div class="PathNav"><a href="#Path8" title="Previous event (8)">&#x2190;</a></div></td></td><td>Call to function 'isl_union_map_intersect_domain' returns a Core Foundation object with a +1 retain count</td><td><div class="PathNav"><a href="#Path10" title="Next event (10)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN539">539</td><td class="line">          <span class="mrange">isl_union_map_copy(TC_RED), isl_union_set_from_set(AccDomW))</span>;</td></tr>
+<tr><td class="num" id="LN540">540</td><td class="line">      <span class='keyword'>if</span> (isl_union_map_is_empty(AccRedDepU) &amp;&amp; !<span class="mrange">isl_union_map_free(<span class="mrange">AccRedDepU</span>)</span>)</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path10" class="msg msgEvent" style="margin-left:50ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexEvent">10</div></td><td><div class="PathNav"><a href="#Path9" title="Previous event (9)">&#x2190;</a></div></td></td><td>Reference count decremented</td><td><div class="PathNav"><a href="#Path11" title="Next event (11)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path11" class="msg msgControl" style="margin-left:7ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexControl">11</div></td><td><div class="PathNav"><a href="#Path10" title="Previous event (10)">&#x2190;</a></div></td></td><td>Taking false branch</td><td><div class="PathNav"><a href="#EndPath" title="Next event (12)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN541">541</td><td class="line">        <span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN542">542</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN543">543</td><td class="line">      isl_map *AccRedDep = isl_map_from_union_map(<span class="mrange">AccRedDepU</span>);</td></tr>
+<tr><td class="num"></td><td class="line"><div id="EndPath" class="msg msgEvent" style="margin-left:28ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexEvent">12</div></td><td><div class="PathNav"><a href="#Path11" title="Previous event (11)">&#x2190;</a></div></td></td><td>Incorrect decrement of the reference count of an object that is not owned at this point by the caller</td></tr></table></div></td></tr>
+<tr><td class="num" id="LN544">544</td><td class="line">      RED_SIN = isl_union_map_add_map(RED_SIN, isl_map_copy(AccRedDep));</td></tr>
+<tr><td class="num" id="LN545">545</td><td class="line">      AccRedDep = isl_map_zip(AccRedDep);</td></tr>
+<tr><td class="num" id="LN546">546</td><td class="line">      AccRedDep = isl_set_unwrap(isl_map_domain(AccRedDep));</td></tr>
+<tr><td class="num" id="LN547">547</td><td class="line">      setReductionDependences(MA, AccRedDep);</td></tr>
+<tr><td class="num" id="LN548">548</td><td class="line">    }</td></tr>
+<tr><td class="num" id="LN549">549</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN550">550</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN551">551</td><td class="line">  <span class='macro'>assert(isl_union_map_is_equal(RED_SIN, TC_RED) &amp;&amp;<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span></td></tr>
+<tr><td class="num" id="LN552">552</td><td class="line">         <span class='string_literal'><span class='macro'>"Intersecting the reduction dependence domain with the wrapped access "<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span></span></td></tr>
+<tr><td class="num" id="LN553">553</td><td class="line">         <span class='string_literal'><span class='macro'>"relation is not enough, we need to loosen the access relation also"</span>)<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN554">554</td><td class="line">  isl_union_map_free(RED_SIN);</td></tr>
+<tr><td class="num" id="LN555">555</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN556">556</td><td class="line">  RAW = isl_union_map_zip(RAW);</td></tr>
+<tr><td class="num" id="LN557">557</td><td class="line">  WAW = isl_union_map_zip(WAW);</td></tr>
+<tr><td class="num" id="LN558">558</td><td class="line">  WAR = isl_union_map_zip(WAR);</td></tr>
+<tr><td class="num" id="LN559">559</td><td class="line">  RED = isl_union_map_zip(RED);</td></tr>
+<tr><td class="num" id="LN560">560</td><td class="line">  TC_RED = isl_union_map_zip(TC_RED);</td></tr>
+<tr><td class="num" id="LN561">561</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN562">562</td><td class="line">  <span class='macro'>DEBUG({<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN563">563</td><td class="line">    <span class='macro'>dbgs() &lt;&lt; <span class='string_literal'>"Zipped Dependences:\n"</span>;<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN564">564</td><td class="line">    <span class='macro'>dump();<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN565">565</td><td class="line">    <span class='macro'>dbgs() &lt;&lt; <span class='string_literal'>"\n"</span>;<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN566">566</td><td class="line">  <span class='macro'>})<span class='expansion'>do { } while (false)</span></span>;</td></tr>
+<tr><td class="num" id="LN567">567</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN568">568</td><td class="line">  RAW = isl_union_set_unwrap(isl_union_map_domain(RAW));</td></tr>
+<tr><td class="num" id="LN569">569</td><td class="line">  WAW = isl_union_set_unwrap(isl_union_map_domain(WAW));</td></tr>
+<tr><td class="num" id="LN570">570</td><td class="line">  WAR = isl_union_set_unwrap(isl_union_map_domain(WAR));</td></tr>
+<tr><td class="num" id="LN571">571</td><td class="line">  RED = isl_union_set_unwrap(isl_union_map_domain(RED));</td></tr>
+<tr><td class="num" id="LN572">572</td><td class="line">  TC_RED = isl_union_set_unwrap(isl_union_map_domain(TC_RED));</td></tr>
+<tr><td class="num" id="LN573">573</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN574">574</td><td class="line">  <span class='macro'>DEBUG({<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN575">575</td><td class="line">    <span class='macro'>dbgs() &lt;&lt; <span class='string_literal'>"Unwrapped Dependences:\n"</span>;<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN576">576</td><td class="line">    <span class='macro'>dump();<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN577">577</td><td class="line">    <span class='macro'>dbgs() &lt;&lt; <span class='string_literal'>"\n"</span>;<span class='expansion'>do { } while (false)</span></span></td></tr>
+<tr><td class="num" id="LN578">578</td><td class="line">  <span class='macro'>})<span class='expansion'>do { } while (false)</span></span>;</td></tr>
+<tr><td class="num" id="LN579">579</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN580">580</td><td class="line">  RAW = isl_union_map_union(RAW, STMT_RAW);</td></tr>
+<tr><td class="num" id="LN581">581</td><td class="line">  WAW = isl_union_map_union(WAW, STMT_WAW);</td></tr>
+<tr><td class="num" id="LN582">582</td><td class="line">  WAR = isl_union_map_union(WAR, STMT_WAR);</td></tr>
+<tr><td class="num" id="LN583">583</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN584">584</td><td class="line">  RAW = isl_union_map_coalesce(RAW);</td></tr>
+<tr><td class="num" id="LN585">585</td><td class="line">  WAW = isl_union_map_coalesce(WAW);</td></tr>
+<tr><td class="num" id="LN586">586</td><td class="line">  WAR = isl_union_map_coalesce(WAR);</td></tr>
+<tr><td class="num" id="LN587">587</td><td class="line">  RED = isl_union_map_coalesce(RED);</td></tr>
+<tr><td class="num" id="LN588">588</td><td class="line">  TC_RED = isl_union_map_coalesce(TC_RED);</td></tr>
+<tr><td class="num" id="LN589">589</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN590">590</td><td class="line">  <span class='macro'>DEBUG(dump())<span class='expansion'>do { } while (false)</span></span>;</td></tr>
+<tr><td class="num" id="LN591">591</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN592">592</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN593">593</td><td class="line"><span class='keyword'>bool</span> Dependences::isValidSchedule(Scop &amp;S,</td></tr>
+<tr><td class="num" id="LN594">594</td><td class="line">                                  StatementToIslMapTy *NewSchedule) <span class='keyword'>const</span> {</td></tr>
+<tr><td class="num" id="LN595">595</td><td class="line">  <span class='keyword'>if</span> (LegalityCheckDisabled)</td></tr>
+<tr><td class="num" id="LN596">596</td><td class="line">    <span class='keyword'>return</span> <span class='keyword'>true</span>;</td></tr>
+<tr><td class="num" id="LN597">597</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN598">598</td><td class="line">  isl_union_map *Dependences = getDependences(TYPE_RAW | TYPE_WAW | TYPE_WAR);</td></tr>
+<tr><td class="num" id="LN599">599</td><td class="line">  isl_space *Space = S.getParamSpace();</td></tr>
+<tr><td class="num" id="LN600">600</td><td class="line">  isl_union_map *Schedule = isl_union_map_empty(Space);</td></tr>
+<tr><td class="num" id="LN601">601</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN602">602</td><td class="line">  isl_space *ScheduleSpace = <span class='keyword'>nullptr</span>;</td></tr>
+<tr><td class="num" id="LN603">603</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN604">604</td><td class="line">  <span class='keyword'>for</span> (ScopStmt &amp;Stmt : S) {</td></tr>
+<tr><td class="num" id="LN605">605</td><td class="line">    isl_map *StmtScat;</td></tr>
+<tr><td class="num" id="LN606">606</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN607">607</td><td class="line">    <span class='keyword'>if</span> (NewSchedule-&gt;find(&amp;Stmt) == NewSchedule-&gt;end())</td></tr>
+<tr><td class="num" id="LN608">608</td><td class="line">      StmtScat = Stmt.getSchedule();</td></tr>
+<tr><td class="num" id="LN609">609</td><td class="line">    <span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN610">610</td><td class="line">      StmtScat = isl_map_copy((*NewSchedule)[&amp;Stmt]);</td></tr>
+<tr><td class="num" id="LN611">611</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN612">612</td><td class="line">    <span class='keyword'>if</span> (!ScheduleSpace)</td></tr>
+<tr><td class="num" id="LN613">613</td><td class="line">      ScheduleSpace = isl_space_range(isl_map_get_space(StmtScat));</td></tr>
+<tr><td class="num" id="LN614">614</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN615">615</td><td class="line">    Schedule = isl_union_map_add_map(Schedule, StmtScat);</td></tr>
+<tr><td class="num" id="LN616">616</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN617">617</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN618">618</td><td class="line">  Dependences =</td></tr>
+<tr><td class="num" id="LN619">619</td><td class="line">      isl_union_map_apply_domain(Dependences, isl_union_map_copy(Schedule));</td></tr>
+<tr><td class="num" id="LN620">620</td><td class="line">  Dependences = isl_union_map_apply_range(Dependences, Schedule);</td></tr>
+<tr><td class="num" id="LN621">621</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN622">622</td><td class="line">  isl_set *Zero = isl_set_universe(isl_space_copy(ScheduleSpace));</td></tr>
+<tr><td class="num" id="LN623">623</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>unsigned</span> i = 0; i &lt; isl_set_dim(Zero, isl_dim_set); i++)</td></tr>
+<tr><td class="num" id="LN624">624</td><td class="line">    Zero = isl_set_fix_si(Zero, isl_dim_set, i, 0);</td></tr>
+<tr><td class="num" id="LN625">625</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN626">626</td><td class="line">  isl_union_set *UDeltas = isl_union_map_deltas(Dependences);</td></tr>
+<tr><td class="num" id="LN627">627</td><td class="line">  isl_set *Deltas = isl_union_set_extract_set(UDeltas, ScheduleSpace);</td></tr>
+<tr><td class="num" id="LN628">628</td><td class="line">  isl_union_set_free(UDeltas);</td></tr>
+<tr><td class="num" id="LN629">629</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN630">630</td><td class="line">  isl_map *NonPositive = isl_set_lex_le_set(Deltas, Zero);</td></tr>
+<tr><td class="num" id="LN631">631</td><td class="line">  <span class='keyword'>bool</span> IsValid = isl_map_is_empty(NonPositive);</td></tr>
+<tr><td class="num" id="LN632">632</td><td class="line">  isl_map_free(NonPositive);</td></tr>
+<tr><td class="num" id="LN633">633</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN634">634</td><td class="line">  <span class='keyword'>return</span> IsValid;</td></tr>
+<tr><td class="num" id="LN635">635</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN636">636</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN637">637</td><td class="line"><span class='comment'>// Check if the current scheduling dimension is parallel.</span></td></tr>
+<tr><td class="num" id="LN638">638</td><td class="line"><span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN639">639</td><td class="line"><span class='comment'>// We check for parallelism by verifying that the loop does not carry any</span></td></tr>
+<tr><td class="num" id="LN640">640</td><td class="line"><span class='comment'>// dependences.</span></td></tr>
+<tr><td class="num" id="LN641">641</td><td class="line"><span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN642">642</td><td class="line"><span class='comment'>// Parallelism test: if the distance is zero in all outer dimensions, then it</span></td></tr>
+<tr><td class="num" id="LN643">643</td><td class="line"><span class='comment'>// has to be zero in the current dimension as well.</span></td></tr>
+<tr><td class="num" id="LN644">644</td><td class="line"><span class='comment'>//</span></td></tr>
+<tr><td class="num" id="LN645">645</td><td class="line"><span class='comment'>// Implementation: first, translate dependences into time space, then force</span></td></tr>
+<tr><td class="num" id="LN646">646</td><td class="line"><span class='comment'>// outer dimensions to be equal. If the distance is zero in the current</span></td></tr>
+<tr><td class="num" id="LN647">647</td><td class="line"><span class='comment'>// dimension, then the loop is parallel. The distance is zero in the current</span></td></tr>
+<tr><td class="num" id="LN648">648</td><td class="line"><span class='comment'>// dimension if it is a subset of a map with equal values for the current</span></td></tr>
+<tr><td class="num" id="LN649">649</td><td class="line"><span class='comment'>// dimension.</span></td></tr>
+<tr><td class="num" id="LN650">650</td><td class="line"><span class='keyword'>bool</span> Dependences::isParallel(isl_union_map *Schedule, isl_union_map *Deps,</td></tr>
+<tr><td class="num" id="LN651">651</td><td class="line">                             isl_pw_aff **MinDistancePtr) <span class='keyword'>const</span> {</td></tr>
+<tr><td class="num" id="LN652">652</td><td class="line">  isl_set *Deltas, *Distance;</td></tr>
+<tr><td class="num" id="LN653">653</td><td class="line">  isl_map *ScheduleDeps;</td></tr>
+<tr><td class="num" id="LN654">654</td><td class="line">  <span class='keyword'>unsigned</span> Dimension;</td></tr>
+<tr><td class="num" id="LN655">655</td><td class="line">  <span class='keyword'>bool</span> IsParallel;</td></tr>
+<tr><td class="num" id="LN656">656</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN657">657</td><td class="line">  Deps = isl_union_map_apply_range(Deps, isl_union_map_copy(Schedule));</td></tr>
+<tr><td class="num" id="LN658">658</td><td class="line">  Deps = isl_union_map_apply_domain(Deps, isl_union_map_copy(Schedule));</td></tr>
+<tr><td class="num" id="LN659">659</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN660">660</td><td class="line">  <span class='keyword'>if</span> (isl_union_map_is_empty(Deps)) {</td></tr>
+<tr><td class="num" id="LN661">661</td><td class="line">    isl_union_map_free(Deps);</td></tr>
+<tr><td class="num" id="LN662">662</td><td class="line">    <span class='keyword'>return</span> <span class='keyword'>true</span>;</td></tr>
+<tr><td class="num" id="LN663">663</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN664">664</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN665">665</td><td class="line">  ScheduleDeps = isl_map_from_union_map(Deps);</td></tr>
+<tr><td class="num" id="LN666">666</td><td class="line">  Dimension = isl_map_dim(ScheduleDeps, isl_dim_out) - 1;</td></tr>
+<tr><td class="num" id="LN667">667</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN668">668</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>unsigned</span> i = 0; i &lt; Dimension; i++)</td></tr>
+<tr><td class="num" id="LN669">669</td><td class="line">    ScheduleDeps = isl_map_equate(ScheduleDeps, isl_dim_out, i, isl_dim_in, i);</td></tr>
+<tr><td class="num" id="LN670">670</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN671">671</td><td class="line">  Deltas = isl_map_deltas(ScheduleDeps);</td></tr>
+<tr><td class="num" id="LN672">672</td><td class="line">  Distance = isl_set_universe(isl_set_get_space(Deltas));</td></tr>
+<tr><td class="num" id="LN673">673</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN674">674</td><td class="line">  <span class='comment'>// [0, ..., 0, +] - All zeros and last dimension larger than zero</span></td></tr>
+<tr><td class="num" id="LN675">675</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>unsigned</span> i = 0; i &lt; Dimension; i++)</td></tr>
+<tr><td class="num" id="LN676">676</td><td class="line">    Distance = isl_set_fix_si(Distance, isl_dim_set, i, 0);</td></tr>
+<tr><td class="num" id="LN677">677</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN678">678</td><td class="line">  Distance = isl_set_lower_bound_si(Distance, isl_dim_set, Dimension, 1);</td></tr>
+<tr><td class="num" id="LN679">679</td><td class="line">  Distance = isl_set_intersect(Distance, Deltas);</td></tr>
+<tr><td class="num" id="LN680">680</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN681">681</td><td class="line">  IsParallel = isl_set_is_empty(Distance);</td></tr>
+<tr><td class="num" id="LN682">682</td><td class="line">  <span class='keyword'>if</span> (IsParallel || !MinDistancePtr) {</td></tr>
+<tr><td class="num" id="LN683">683</td><td class="line">    isl_set_free(Distance);</td></tr>
+<tr><td class="num" id="LN684">684</td><td class="line">    <span class='keyword'>return</span> IsParallel;</td></tr>
+<tr><td class="num" id="LN685">685</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN686">686</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN687">687</td><td class="line">  Distance = isl_set_project_out(Distance, isl_dim_set, 0, Dimension);</td></tr>
+<tr><td class="num" id="LN688">688</td><td class="line">  Distance = isl_set_coalesce(Distance);</td></tr>
+<tr><td class="num" id="LN689">689</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN690">690</td><td class="line">  <span class='comment'>// This last step will compute a expression for the minimal value in the</span></td></tr>
+<tr><td class="num" id="LN691">691</td><td class="line">  <span class='comment'>// distance polyhedron Distance with regards to the first (outer most)</span></td></tr>
+<tr><td class="num" id="LN692">692</td><td class="line">  <span class='comment'>// dimension.</span></td></tr>
+<tr><td class="num" id="LN693">693</td><td class="line">  *MinDistancePtr = isl_pw_aff_coalesce(isl_set_dim_min(Distance, 0));</td></tr>
+<tr><td class="num" id="LN694">694</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN695">695</td><td class="line">  <span class='keyword'>return</span> <span class='keyword'>false</span>;</td></tr>
+<tr><td class="num" id="LN696">696</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN697">697</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN698">698</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>void</span> printDependencyMap(raw_ostream &amp;OS, __isl_keep isl_union_map *DM) {</td></tr>
+<tr><td class="num" id="LN699">699</td><td class="line">  <span class='keyword'>if</span> (DM)</td></tr>
+<tr><td class="num" id="LN700">700</td><td class="line">    OS &lt;&lt; DM &lt;&lt; <span class='string_literal'>"\n"</span>;</td></tr>
+<tr><td class="num" id="LN701">701</td><td class="line">  <span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN702">702</td><td class="line">    OS &lt;&lt; <span class='string_literal'>"n/a\n"</span>;</td></tr>
+<tr><td class="num" id="LN703">703</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN704">704</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN705">705</td><td class="line"><span class='keyword'>void</span> Dependences::print(raw_ostream &amp;OS) <span class='keyword'>const</span> {</td></tr>
+<tr><td class="num" id="LN706">706</td><td class="line">  OS &lt;&lt; <span class='string_literal'>"\tRAW dependences:\n\t\t"</span>;</td></tr>
+<tr><td class="num" id="LN707">707</td><td class="line">  printDependencyMap(OS, RAW);</td></tr>
+<tr><td class="num" id="LN708">708</td><td class="line">  OS &lt;&lt; <span class='string_literal'>"\tWAR dependences:\n\t\t"</span>;</td></tr>
+<tr><td class="num" id="LN709">709</td><td class="line">  printDependencyMap(OS, WAR);</td></tr>
+<tr><td class="num" id="LN710">710</td><td class="line">  OS &lt;&lt; <span class='string_literal'>"\tWAW dependences:\n\t\t"</span>;</td></tr>
+<tr><td class="num" id="LN711">711</td><td class="line">  printDependencyMap(OS, WAW);</td></tr>
+<tr><td class="num" id="LN712">712</td><td class="line">  OS &lt;&lt; <span class='string_literal'>"\tReduction dependences:\n\t\t"</span>;</td></tr>
+<tr><td class="num" id="LN713">713</td><td class="line">  printDependencyMap(OS, RED);</td></tr>
+<tr><td class="num" id="LN714">714</td><td class="line">  OS &lt;&lt; <span class='string_literal'>"\tTransitive closure of reduction dependences:\n\t\t"</span>;</td></tr>
+<tr><td class="num" id="LN715">715</td><td class="line">  printDependencyMap(OS, TC_RED);</td></tr>
+<tr><td class="num" id="LN716">716</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN717">717</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN718">718</td><td class="line"><span class='keyword'>void</span> Dependences::dump() <span class='keyword'>const</span> { print(dbgs()); }</td></tr>
+<tr><td class="num" id="LN719">719</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN720">720</td><td class="line"><span class='keyword'>void</span> Dependences::releaseMemory() {</td></tr>
+<tr><td class="num" id="LN721">721</td><td class="line">  isl_union_map_free(RAW);</td></tr>
+<tr><td class="num" id="LN722">722</td><td class="line">  isl_union_map_free(WAR);</td></tr>
+<tr><td class="num" id="LN723">723</td><td class="line">  isl_union_map_free(WAW);</td></tr>
+<tr><td class="num" id="LN724">724</td><td class="line">  isl_union_map_free(RED);</td></tr>
+<tr><td class="num" id="LN725">725</td><td class="line">  isl_union_map_free(TC_RED);</td></tr>
+<tr><td class="num" id="LN726">726</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN727">727</td><td class="line">  RED = RAW = WAR = WAW = TC_RED = <span class='keyword'>nullptr</span>;</td></tr>
+<tr><td class="num" id="LN728">728</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN729">729</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>auto</span> &amp;ReductionDeps : ReductionDependences)</td></tr>
+<tr><td class="num" id="LN730">730</td><td class="line">    isl_map_free(ReductionDeps.second);</td></tr>
+<tr><td class="num" id="LN731">731</td><td class="line">  ReductionDependences.clear();</td></tr>
+<tr><td class="num" id="LN732">732</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN733">733</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN734">734</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_union_map *Dependences::getDependences(<span class='keyword'>int</span> Kinds) <span class='keyword'>const</span> {</td></tr>
+<tr><td class="num" id="LN735">735</td><td class="line">  <span class='macro'>assert(hasValidDependences() &amp;&amp; <span class='string_literal'>"No valid dependences available"</span>)<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN736">736</td><td class="line">  isl_space *Space = isl_union_map_get_space(RAW);</td></tr>
+<tr><td class="num" id="LN737">737</td><td class="line">  isl_union_map *Deps = isl_union_map_empty(Space);</td></tr>
+<tr><td class="num" id="LN738">738</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN739">739</td><td class="line">  <span class='keyword'>if</span> (Kinds &amp; TYPE_RAW)</td></tr>
+<tr><td class="num" id="LN740">740</td><td class="line">    Deps = isl_union_map_union(Deps, isl_union_map_copy(RAW));</td></tr>
+<tr><td class="num" id="LN741">741</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN742">742</td><td class="line">  <span class='keyword'>if</span> (Kinds &amp; TYPE_WAR)</td></tr>
+<tr><td class="num" id="LN743">743</td><td class="line">    Deps = isl_union_map_union(Deps, isl_union_map_copy(WAR));</td></tr>
+<tr><td class="num" id="LN744">744</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN745">745</td><td class="line">  <span class='keyword'>if</span> (Kinds &amp; TYPE_WAW)</td></tr>
+<tr><td class="num" id="LN746">746</td><td class="line">    Deps = isl_union_map_union(Deps, isl_union_map_copy(WAW));</td></tr>
+<tr><td class="num" id="LN747">747</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN748">748</td><td class="line">  <span class='keyword'>if</span> (Kinds &amp; TYPE_RED)</td></tr>
+<tr><td class="num" id="LN749">749</td><td class="line">    Deps = isl_union_map_union(Deps, isl_union_map_copy(RED));</td></tr>
+<tr><td class="num" id="LN750">750</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN751">751</td><td class="line">  <span class='keyword'>if</span> (Kinds &amp; TYPE_TC_RED)</td></tr>
+<tr><td class="num" id="LN752">752</td><td class="line">    Deps = isl_union_map_union(Deps, isl_union_map_copy(TC_RED));</td></tr>
+<tr><td class="num" id="LN753">753</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN754">754</td><td class="line">  Deps = isl_union_map_coalesce(Deps);</td></tr>
+<tr><td class="num" id="LN755">755</td><td class="line">  Deps = isl_union_map_detect_equalities(Deps);</td></tr>
+<tr><td class="num" id="LN756">756</td><td class="line">  <span class='keyword'>return</span> Deps;</td></tr>
+<tr><td class="num" id="LN757">757</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN758">758</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN759">759</td><td class="line"><span class='keyword'>bool</span> Dependences::hasValidDependences() <span class='keyword'>const</span> {</td></tr>
+<tr><td class="num" id="LN760">760</td><td class="line">  <span class='keyword'>return</span> (RAW != <span class='keyword'>nullptr</span>) &amp;&amp; (WAR != <span class='keyword'>nullptr</span>) &amp;&amp; (WAW != <span class='keyword'>nullptr</span>);</td></tr>
+<tr><td class="num" id="LN761">761</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN762">762</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN763">763</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_map *</td></tr>
+<tr><td class="num" id="LN764">764</td><td class="line">Dependences::getReductionDependences(MemoryAccess *MA) <span class='keyword'>const</span> {</td></tr>
+<tr><td class="num" id="LN765">765</td><td class="line">  <span class='keyword'>return</span> isl_map_copy(ReductionDependences.lookup(MA));</td></tr>
+<tr><td class="num" id="LN766">766</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN767">767</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN768">768</td><td class="line"><span class='keyword'>void</span> Dependences::setReductionDependences(MemoryAccess *MA, isl_map *D) {</td></tr>
+<tr><td class="num" id="LN769">769</td><td class="line">  <span class='macro'>assert(ReductionDependences.count(MA) == 0 &amp;&amp;<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span></td></tr>
+<tr><td class="num" id="LN770">770</td><td class="line">         <span class='string_literal'><span class='macro'>"Reduction dependences set twice!"</span>)<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN771">771</td><td class="line">  ReductionDependences[MA] = D;</td></tr>
+<tr><td class="num" id="LN772">772</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN773">773</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN774">774</td><td class="line"><span class='keyword'>const</span> Dependences &amp;</td></tr>
+<tr><td class="num" id="LN775">775</td><td class="line">DependenceInfo::getDependences(Dependences::AnalyisLevel Level) {</td></tr>
+<tr><td class="num" id="LN776">776</td><td class="line">  <span class='keyword'>if</span> (Dependences *d = D[Level].get())</td></tr>
+<tr><td class="num" id="LN777">777</td><td class="line">    <span class='keyword'>return</span> *d;</td></tr>
+<tr><td class="num" id="LN778">778</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN779">779</td><td class="line">  <span class='keyword'>return</span> recomputeDependences(Level);</td></tr>
+<tr><td class="num" id="LN780">780</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN781">781</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN782">782</td><td class="line"><span class='keyword'>const</span> Dependences &amp;</td></tr>
+<tr><td class="num" id="LN783">783</td><td class="line">DependenceInfo::recomputeDependences(Dependences::AnalyisLevel Level) {</td></tr>
+<tr><td class="num" id="LN784">784</td><td class="line">  D[Level].reset(<span class='keyword'>new</span> Dependences(S-&gt;getSharedIslCtx(), Level));</td></tr>
+<tr><td class="num" id="LN785">785</td><td class="line">  D[Level]-&gt;calculateDependences(*S);</td></tr>
+<tr><td class="num" id="LN786">786</td><td class="line">  <span class='keyword'>return</span> *D[Level];</td></tr>
+<tr><td class="num" id="LN787">787</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN788">788</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN789">789</td><td class="line"><span class='keyword'>bool</span> DependenceInfo::runOnScop(Scop &amp;ScopVar) {</td></tr>
+<tr><td class="num" id="LN790">790</td><td class="line">  S = &amp;ScopVar;</td></tr>
+<tr><td class="num" id="LN791">791</td><td class="line">  <span class='keyword'>return</span> <span class='keyword'>false</span>;</td></tr>
+<tr><td class="num" id="LN792">792</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN793">793</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN794">794</td><td class="line"><span class='comment'>/// Print the dependences for the given SCoP to @p OS.</span></td></tr>
+<tr><td class="num" id="LN795">795</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN796">796</td><td class="line"><span class='keyword'>void</span> polly::DependenceInfo::printScop(raw_ostream &amp;OS, Scop &amp;S) <span class='keyword'>const</span> {</td></tr>
+<tr><td class="num" id="LN797">797</td><td class="line">  <span class='keyword'>if</span> (<span class='keyword'>auto</span> d = D[OptAnalysisLevel].get()) {</td></tr>
+<tr><td class="num" id="LN798">798</td><td class="line">    d-&gt;print(OS);</td></tr>
+<tr><td class="num" id="LN799">799</td><td class="line">    <span class='keyword'>return</span>;</td></tr>
+<tr><td class="num" id="LN800">800</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN801">801</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN802">802</td><td class="line">  <span class='comment'>// Otherwise create the dependences on-the-fly and print it</span></td></tr>
+<tr><td class="num" id="LN803">803</td><td class="line">  Dependences D(S.getSharedIslCtx(), OptAnalysisLevel);</td></tr>
+<tr><td class="num" id="LN804">804</td><td class="line">  D.calculateDependences(S);</td></tr>
+<tr><td class="num" id="LN805">805</td><td class="line">  D.print(OS);</td></tr>
+<tr><td class="num" id="LN806">806</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN807">807</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN808">808</td><td class="line"><span class='keyword'>void</span> DependenceInfo::getAnalysisUsage(AnalysisUsage &amp;AU) <span class='keyword'>const</span> {</td></tr>
+<tr><td class="num" id="LN809">809</td><td class="line">  AU.addRequiredTransitive&lt;ScopInfoRegionPass&gt;();</td></tr>
+<tr><td class="num" id="LN810">810</td><td class="line">  AU.setPreservesAll();</td></tr>
+<tr><td class="num" id="LN811">811</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN812">812</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN813">813</td><td class="line"><span class='keyword'>char</span> DependenceInfo::ID = 0;</td></tr>
+<tr><td class="num" id="LN814">814</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN815">815</td><td class="line">Pass *polly::createDependenceInfoPass() { <span class='keyword'>return</span> <span class='keyword'>new</span> DependenceInfo(); }</td></tr>
+<tr><td class="num" id="LN816">816</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN817">817</td><td class="line"><span class='macro'>INITIALIZE_PASS_BEGIN(DependenceInfo, <span class='string_literal'>"polly-dependences"</span>,<span class='expansion'>static void *initializeDependenceInfoPassOnce(PassRegistry &amp;<br>Registry) {</span></span></td></tr>
+<tr><td class="num" id="LN818">818</td><td class="line">                      <span class='string_literal'><span class='macro'>"Polly - Calculate dependences"</span>, <span class='keyword'>false</span>, <span class='keyword'>false</span>)<span class='expansion'>static void *initializeDependenceInfoPassOnce(PassRegistry &amp;<br>Registry) {</span></span>;</td></tr>
+<tr><td class="num" id="LN819">819</td><td class="line"><span class='macro'>INITIALIZE_PASS_DEPENDENCY(ScopInfoRegionPass)<span class='expansion'>initializeScopInfoRegionPassPass(Registry);</span></span>;</td></tr>
+<tr><td class="num" id="LN820">820</td><td class="line"><span class='macro'>INITIALIZE_PASS_END(DependenceInfo, <span class='string_literal'>"polly-dependences"</span>,<span class='expansion'>PassInfo *PI = new PassInfo( "Polly - Calculate dependences",<br> "polly-dependences", &amp;DependenceInfo::ID, PassInfo::NormalCtor_t<br>(callDefaultCtor&lt;DependenceInfo&gt;), false, false); Registry<br>.registerPass(*PI, true); return PI; } static once_flag InitializeDependenceInfoPassFlag<br>; void llvm::initializeDependenceInfoPass(PassRegistry &amp;Registry<br>) { llvm::call_once(InitializeDependenceInfoPassFlag, initializeDependenceInfoPassOnce<br>, std::ref(Registry)); }</span></span></td></tr>
+<tr><td class="num" id="LN821">821</td><td class="line">                    <span class='string_literal'><span class='macro'>"Polly - Calculate dependences"</span>, <span class='keyword'>false</span>, <span class='keyword'>false</span>)<span class='expansion'>PassInfo *PI = new PassInfo( "Polly - Calculate dependences",<br> "polly-dependences", &amp;DependenceInfo::ID, PassInfo::NormalCtor_t<br>(callDefaultCtor&lt;DependenceInfo&gt;), false, false); Registry<br>.registerPass(*PI, true); return PI; } static once_flag InitializeDependenceInfoPassFlag<br>; void llvm::initializeDependenceInfoPass(PassRegistry &amp;Registry<br>) { llvm::call_once(InitializeDependenceInfoPassFlag, initializeDependenceInfoPassOnce<br>, std::ref(Registry)); }</span></span></td></tr>
+<tr><td class="num" id="LN822">822</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN823">823</td><td class="line"><span class='comment'>//===----------------------------------------------------------------------===//</span></td></tr>
+<tr><td class="num" id="LN824">824</td><td class="line"><span class='keyword'>const</span> Dependences &amp;</td></tr>
+<tr><td class="num" id="LN825">825</td><td class="line">DependenceInfoWrapperPass::getDependences(Scop *S,</td></tr>
+<tr><td class="num" id="LN826">826</td><td class="line">                                          Dependences::AnalyisLevel Level) {</td></tr>
+<tr><td class="num" id="LN827">827</td><td class="line">  <span class='keyword'>auto</span> It = ScopToDepsMap.find(S);</td></tr>
+<tr><td class="num" id="LN828">828</td><td class="line">  <span class='keyword'>if</span> (It != ScopToDepsMap.end())</td></tr>
+<tr><td class="num" id="LN829">829</td><td class="line">    <span class='keyword'>if</span> (It-&gt;second) {</td></tr>
+<tr><td class="num" id="LN830">830</td><td class="line">      <span class='keyword'>if</span> (It-&gt;second-&gt;getDependenceLevel() == Level)</td></tr>
+<tr><td class="num" id="LN831">831</td><td class="line">        <span class='keyword'>return</span> *It-&gt;second.get();</td></tr>
+<tr><td class="num" id="LN832">832</td><td class="line">    }</td></tr>
+<tr><td class="num" id="LN833">833</td><td class="line">  <span class='keyword'>return</span> recomputeDependences(S, Level);</td></tr>
+<tr><td class="num" id="LN834">834</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN835">835</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN836">836</td><td class="line"><span class='keyword'>const</span> Dependences &amp;DependenceInfoWrapperPass::recomputeDependences(</td></tr>
+<tr><td class="num" id="LN837">837</td><td class="line">    Scop *S, Dependences::AnalyisLevel Level) {</td></tr>
+<tr><td class="num" id="LN838">838</td><td class="line">  std::unique_ptr&lt;Dependences&gt; D(<span class='keyword'>new</span> Dependences(S-&gt;getSharedIslCtx(), Level));</td></tr>
+<tr><td class="num" id="LN839">839</td><td class="line">  D-&gt;calculateDependences(*S);</td></tr>
+<tr><td class="num" id="LN840">840</td><td class="line">  <span class='keyword'>auto</span> Inserted = ScopToDepsMap.insert(std::make_pair(S, std::move(D)));</td></tr>
+<tr><td class="num" id="LN841">841</td><td class="line">  <span class='keyword'>return</span> *Inserted.first-&gt;second;</td></tr>
+<tr><td class="num" id="LN842">842</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN843">843</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN844">844</td><td class="line"><span class='keyword'>bool</span> DependenceInfoWrapperPass::runOnFunction(Function &amp;F) {</td></tr>
+<tr><td class="num" id="LN845">845</td><td class="line">  <span class='keyword'>auto</span> &amp;SI = getAnalysis&lt;ScopInfoWrapperPass&gt;();</td></tr>
+<tr><td class="num" id="LN846">846</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>auto</span> &amp;It : SI) {</td></tr>
+<tr><td class="num" id="LN847">847</td><td class="line">    <span class='macro'>assert(It.second &amp;&amp; <span class='string_literal'>"Invalid SCoP object!"</span>)<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN848">848</td><td class="line">    recomputeDependences(It.second.get(), Dependences::AL_Access);</td></tr>
+<tr><td class="num" id="LN849">849</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN850">850</td><td class="line">  <span class='keyword'>return</span> <span class='keyword'>false</span>;</td></tr>
+<tr><td class="num" id="LN851">851</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN852">852</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN853">853</td><td class="line"><span class='keyword'>void</span> DependenceInfoWrapperPass::print(raw_ostream &amp;OS, <span class='keyword'>const</span> Module *M) <span class='keyword'>const</span> {</td></tr>
+<tr><td class="num" id="LN854">854</td><td class="line">  <span class='keyword'>for</span> (<span class='keyword'>auto</span> &amp;It : ScopToDepsMap) {</td></tr>
+<tr><td class="num" id="LN855">855</td><td class="line">    <span class='macro'>assert((It.first &amp;&amp; It.second) &amp;&amp; <span class='string_literal'>"Invalid Scop or Dependence object!\n"</span>)<span class='expansion'>(static_cast&lt;void&gt; (0))</span></span>;</td></tr>
+<tr><td class="num" id="LN856">856</td><td class="line">    It.second-&gt;print(OS);</td></tr>
+<tr><td class="num" id="LN857">857</td><td class="line">  }</td></tr>
+<tr><td class="num" id="LN858">858</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN859">859</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN860">860</td><td class="line"><span class='keyword'>void</span> DependenceInfoWrapperPass::getAnalysisUsage(AnalysisUsage &amp;AU) <span class='keyword'>const</span> {</td></tr>
+<tr><td class="num" id="LN861">861</td><td class="line">  AU.addRequiredTransitive&lt;ScopInfoWrapperPass&gt;();</td></tr>
+<tr><td class="num" id="LN862">862</td><td class="line">  AU.setPreservesAll();</td></tr>
+<tr><td class="num" id="LN863">863</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN864">864</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN865">865</td><td class="line"><span class='keyword'>char</span> DependenceInfoWrapperPass::ID = 0;</td></tr>
+<tr><td class="num" id="LN866">866</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN867">867</td><td class="line">Pass *polly::createDependenceInfoWrapperPassPass() {</td></tr>
+<tr><td class="num" id="LN868">868</td><td class="line">  <span class='keyword'>return</span> <span class='keyword'>new</span> DependenceInfoWrapperPass();</td></tr>
+<tr><td class="num" id="LN869">869</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN870">870</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN871">871</td><td class="line"><span class='macro'>INITIALIZE_PASS_BEGIN(<span class='expansion'>static void *initializeDependenceInfoWrapperPassPassOnce(PassRegistry<br> &amp;Registry) {</span></span></td></tr>
+<tr><td class="num" id="LN872">872</td><td class="line">    <span class='macro'>DependenceInfoWrapperPass, <span class='string_literal'>"polly-function-dependences"</span>,<span class='expansion'>static void *initializeDependenceInfoWrapperPassPassOnce(PassRegistry<br> &amp;Registry) {</span></span></td></tr>
+<tr><td class="num" id="LN873">873</td><td class="line">    <span class='string_literal'><span class='macro'>"Polly - Calculate dependences for all the SCoPs of a function"</span>, <span class='keyword'>false</span>,<span class='expansion'>static void *initializeDependenceInfoWrapperPassPassOnce(PassRegistry<br> &amp;Registry) {</span></span></td></tr>
+<tr><td class="num" id="LN874">874</td><td class="line">    <span class='keyword'><span class='macro'>false</span>)<span class='expansion'>static void *initializeDependenceInfoWrapperPassPassOnce(PassRegistry<br> &amp;Registry) {</span></span></td></tr>
+<tr><td class="num" id="LN875">875</td><td class="line"><span class='macro'>INITIALIZE_PASS_DEPENDENCY(ScopInfoWrapperPass)<span class='expansion'>initializeScopInfoWrapperPassPass(Registry);</span></span>;</td></tr>
+<tr><td class="num" id="LN876">876</td><td class="line"><span class='macro'>INITIALIZE_PASS_END(<span class='expansion'>PassInfo *PI = new PassInfo( "Polly - Calculate dependences for all the SCoPs of a function"<br>, "polly-function-dependences", &amp;DependenceInfoWrapperPass<br>::ID, PassInfo::NormalCtor_t(callDefaultCtor&lt;DependenceInfoWrapperPass<br>&gt;), false, false); Registry.registerPass(*PI, true); return<br> PI; } static once_flag InitializeDependenceInfoWrapperPassPassFlag<br>; void llvm::initializeDependenceInfoWrapperPassPass(PassRegistry<br> &amp;Registry) { llvm::call_once(InitializeDependenceInfoWrapperPassPassFlag<br>, initializeDependenceInfoWrapperPassPassOnce, std::ref(Registry<br>)); }</span></span></td></tr>
+<tr><td class="num" id="LN877">877</td><td class="line">    <span class='macro'>DependenceInfoWrapperPass, <span class='string_literal'>"polly-function-dependences"</span>,<span class='expansion'>PassInfo *PI = new PassInfo( "Polly - Calculate dependences for all the SCoPs of a function"<br>, "polly-function-dependences", &amp;DependenceInfoWrapperPass<br>::ID, PassInfo::NormalCtor_t(callDefaultCtor&lt;DependenceInfoWrapperPass<br>&gt;), false, false); Registry.registerPass(*PI, true); return<br> PI; } static once_flag InitializeDependenceInfoWrapperPassPassFlag<br>; void llvm::initializeDependenceInfoWrapperPassPass(PassRegistry<br> &amp;Registry) { llvm::call_once(InitializeDependenceInfoWrapperPassPassFlag<br>, initializeDependenceInfoWrapperPassPassOnce, std::ref(Registry<br>)); }</span></span></td></tr>
+<tr><td class="num" id="LN878">878</td><td class="line">    <span class='string_literal'><span class='macro'>"Polly - Calculate dependences for all the SCoPs of a function"</span>, <span class='keyword'>false</span>,<span class='expansion'>PassInfo *PI = new PassInfo( "Polly - Calculate dependences for all the SCoPs of a function"<br>, "polly-function-dependences", &amp;DependenceInfoWrapperPass<br>::ID, PassInfo::NormalCtor_t(callDefaultCtor&lt;DependenceInfoWrapperPass<br>&gt;), false, false); Registry.registerPass(*PI, true); return<br> PI; } static once_flag InitializeDependenceInfoWrapperPassPassFlag<br>; void llvm::initializeDependenceInfoWrapperPassPass(PassRegistry<br> &amp;Registry) { llvm::call_once(InitializeDependenceInfoWrapperPassPassFlag<br>, initializeDependenceInfoWrapperPassPassOnce, std::ref(Registry<br>)); }</span></span></td></tr>
+<tr><td class="num" id="LN879">879</td><td class="line">    <span class='keyword'><span class='macro'>false</span>)<span class='expansion'>PassInfo *PI = new PassInfo( "Polly - Calculate dependences for all the SCoPs of a function"<br>, "polly-function-dependences", &amp;DependenceInfoWrapperPass<br>::ID, PassInfo::NormalCtor_t(callDefaultCtor&lt;DependenceInfoWrapperPass<br>&gt;), false, false); Registry.registerPass(*PI, true); return<br> PI; } static once_flag InitializeDependenceInfoWrapperPassPassFlag<br>; void llvm::initializeDependenceInfoWrapperPassPass(PassRegistry<br> &amp;Registry) { llvm::call_once(InitializeDependenceInfoWrapperPassPassFlag<br>, initializeDependenceInfoWrapperPassPassOnce, std::ref(Registry<br>)); }</span></span></td></tr>
+</table></body></html>

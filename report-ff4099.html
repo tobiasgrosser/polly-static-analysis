@@ -1,0 +1,1564 @@
+<!doctype html>
+<html>
+<head>
+<title>/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_affine_hull.c</title>
+<style type="text/css">
+ body { color:#000000; background-color:#ffffff }
+ body { font-family:Helvetica, sans-serif; font-size:10pt }
+ h1 { font-size:14pt }
+ .code { border-collapse:collapse; width:100%; }
+ .code { font-family: "Monospace", monospace; font-size:10pt }
+ .code { line-height: 1.2em }
+ .comment { color: green; font-style: oblique }
+ .keyword { color: blue }
+ .string_literal { color: red }
+ .directive { color: darkmagenta }
+ .expansion { display: none; }
+ .macro:hover .expansion { display: block; border: 2px solid #FF0000; padding: 2px; background-color:#FFF0F0; font-weight: normal;   -webkit-border-radius:5px;  -webkit-box-shadow:1px 1px 7px #000; position: absolute; top: -1em; left:10em; z-index: 1 } 
+ .macro { color: darkmagenta; background-color:LemonChiffon; position: relative }
+ .num { width:2.5em; padding-right:2ex; background-color:#eeeeee }
+ .num { text-align:right; font-size:8pt }
+ .num { color:#444444 }
+ .line { padding-left: 1ex; border-left: 3px solid #ccc }
+ .line { white-space: pre }
+ .msg { -webkit-box-shadow:1px 1px 7px #000 }
+ .msg { -webkit-border-radius:5px }
+ .msg { font-family:Helvetica, sans-serif; font-size:8pt }
+ .msg { float:left }
+ .msg { padding:0.25em 1ex 0.25em 1ex }
+ .msg { margin-top:10px; margin-bottom:10px }
+ .msg { font-weight:bold }
+ .msg { max-width:60em; word-wrap: break-word; white-space: pre-wrap }
+ .msgT { padding:0x; spacing:0x }
+ .msgEvent { background-color:#fff8b4; color:#000000 }
+ .msgControl { background-color:#bbbbbb; color:#000000 }
+ .mrange { background-color:#dfddf3 }
+ .mrange { border-bottom:1px solid #6F9DBE }
+ .PathIndex { font-weight: bold; padding:0px 5px; margin-right:5px; }
+ .PathIndex { -webkit-border-radius:8px }
+ .PathIndexEvent { background-color:#bfba87 }
+ .PathIndexControl { background-color:#8c8c8c }
+ .PathNav a { text-decoration:none; font-size: larger }
+ .CodeInsertionHint { font-weight: bold; background-color: #10dd10 }
+ .CodeRemovalHint { background-color:#de1010 }
+ .CodeRemovalHint { border-bottom:1px solid #6F9DBE }
+ table.simpletable {
+   padding: 5px;
+   font-size:12pt;
+   margin:20px;
+   border-collapse: collapse; border-spacing: 0px;
+ }
+ td.rowname {
+   text-align:right; font-weight:bold; color:#444444;
+   padding-right:2ex; }
+</style>
+</head>
+<body>
+<!-- BUGDESC Incorrect decrement of the reference count of an object that is not owned at this point by the caller -->
+
+<!-- BUGTYPE Bad release -->
+
+<!-- BUGCATEGORY Memory (Core Foundation/Objective-C) -->
+
+<!-- BUGFILE /cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_affine_hull.c -->
+
+<!-- FILENAME isl_affine_hull.c -->
+
+<!-- FUNCTIONNAME affine_hull_with_cone -->
+
+<!-- ISSUEHASHCONTENTOFLINEINCONTEXT 122e59d615ecb6afc3353a2095714743 -->
+
+<!-- BUGLINE 1016 -->
+
+<!-- BUGCOLUMN 2 -->
+
+<!-- BUGPATHLENGTH 3 -->
+
+<!-- BUGMETAEND -->
+<!-- REPORTHEADER -->
+<h3>Bug Summary</h3>
+<table class="simpletable">
+<tr><td class="rowname">File:</td><td>External/isl/isl_affine_hull.c</td></tr>
+<tr><td class="rowname">Location:</td><td><a href="#EndPath">line 1016, column 2</a></td></tr>
+<tr><td class="rowname">Description:</td><td>Incorrect decrement of the reference count of an object that is not owned at this point by the caller</td></tr>
+<tr><td></td><td>Code is compiled to use reference counts</td></tr>
+</table>
+<!-- REPORTSUMMARYEXTRA -->
+<h3>Annotated Source Code</h3>
+<table class="code">
+<tr><td class="num" id="LN1">1</td><td class="line"><span class='comment'>/*</span></td></tr>
+<tr><td class="num" id="LN2">2</td><td class="line"> <span class='comment'>* Copyright 2008-2009 Katholieke Universiteit Leuven</span></td></tr>
+<tr><td class="num" id="LN3">3</td><td class="line"> <span class='comment'>* Copyright 2010      INRIA Saclay</span></td></tr>
+<tr><td class="num" id="LN4">4</td><td class="line"> <span class='comment'>* Copyright 2012      Ecole Normale Superieure</span></td></tr>
+<tr><td class="num" id="LN5">5</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN6">6</td><td class="line"> <span class='comment'>* Use of this software is governed by the MIT license</span></td></tr>
+<tr><td class="num" id="LN7">7</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN8">8</td><td class="line"> <span class='comment'>* Written by Sven Verdoolaege, K.U.Leuven, Departement</span></td></tr>
+<tr><td class="num" id="LN9">9</td><td class="line"> <span class='comment'>* Computerwetenschappen, Celestijnenlaan 200A, B-3001 Leuven, Belgium</span></td></tr>
+<tr><td class="num" id="LN10">10</td><td class="line"> <span class='comment'>* and INRIA Saclay - Ile-de-France, Parc Club Orsay Universite,</span></td></tr>
+<tr><td class="num" id="LN11">11</td><td class="line"> <span class='comment'>* ZAC des vignes, 4 rue Jacques Monod, 91893 Orsay, France</span></td></tr>
+<tr><td class="num" id="LN12">12</td><td class="line"> <span class='comment'>* and Ecole Normale Superieure, 45 rue d'Ulm, 75230 Paris, France</span></td></tr>
+<tr><td class="num" id="LN13">13</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN14">14</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN15">15</td><td class="line"><span class='directive'>#include &lt;isl_ctx_private.h&gt;</span></td></tr>
+<tr><td class="num" id="LN16">16</td><td class="line"><span class='directive'>#include &lt;isl_map_private.h&gt;</span></td></tr>
+<tr><td class="num" id="LN17">17</td><td class="line"><span class='directive'>#include &lt;isl_seq.h&gt;</span></td></tr>
+<tr><td class="num" id="LN18">18</td><td class="line"><span class='directive'>#include &lt;isl/set.h&gt;</span></td></tr>
+<tr><td class="num" id="LN19">19</td><td class="line"><span class='directive'>#include &lt;isl/lp.h&gt;</span></td></tr>
+<tr><td class="num" id="LN20">20</td><td class="line"><span class='directive'>#include &lt;isl/map.h&gt;</span></td></tr>
+<tr><td class="num" id="LN21">21</td><td class="line"><span class='directive'>#include "isl_equalities.h"</span></td></tr>
+<tr><td class="num" id="LN22">22</td><td class="line"><span class='directive'>#include "isl_sample.h"</span></td></tr>
+<tr><td class="num" id="LN23">23</td><td class="line"><span class='directive'>#include "isl_tab.h"</span></td></tr>
+<tr><td class="num" id="LN24">24</td><td class="line"><span class='directive'>#include &lt;isl_mat_private.h&gt;</span></td></tr>
+<tr><td class="num" id="LN25">25</td><td class="line"><span class='directive'>#include &lt;isl_vec_private.h&gt;</span></td></tr>
+<tr><td class="num" id="LN26">26</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN27">27</td><td class="line"><span class='keyword'>struct</span> isl_basic_map *isl_basic_map_implicit_equalities(</td></tr>
+<tr><td class="num" id="LN28">28</td><td class="line">						<span class='keyword'>struct</span> isl_basic_map *bmap)</td></tr>
+<tr><td class="num" id="LN29">29</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN30">30</td><td class="line">	<span class='keyword'>struct</span> isl_tab *tab;</td></tr>
+<tr><td class="num" id="LN31">31</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN32">32</td><td class="line">	<span class='keyword'>if</span> (!bmap)</td></tr>
+<tr><td class="num" id="LN33">33</td><td class="line">		<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN34">34</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN35">35</td><td class="line">	bmap = isl_basic_map_gauss(bmap, <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>);</td></tr>
+<tr><td class="num" id="LN36">36</td><td class="line">	<span class='keyword'>if</span> (<span class='macro'>ISL_F_ISSET(bmap, ISL_BASIC_MAP_EMPTY)<span class='expansion'>(!!(((bmap)-&gt;flags) &amp; ((1 &lt;&lt; 1))))</span></span>)</td></tr>
+<tr><td class="num" id="LN37">37</td><td class="line">		<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN38">38</td><td class="line">	<span class='keyword'>if</span> (<span class='macro'>ISL_F_ISSET(bmap, ISL_BASIC_MAP_NO_IMPLICIT)<span class='expansion'>(!!(((bmap)-&gt;flags) &amp; ((1 &lt;&lt; 2))))</span></span>)</td></tr>
+<tr><td class="num" id="LN39">39</td><td class="line">		<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN40">40</td><td class="line">	<span class='keyword'>if</span> (bmap-&gt;n_ineq &lt;= 1)</td></tr>
+<tr><td class="num" id="LN41">41</td><td class="line">		<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN42">42</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN43">43</td><td class="line">	tab = isl_tab_from_basic_map(bmap, 0);</td></tr>
+<tr><td class="num" id="LN44">44</td><td class="line">	<span class='keyword'>if</span> (isl_tab_detect_implicit_equalities(tab) &lt; 0)</td></tr>
+<tr><td class="num" id="LN45">45</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN46">46</td><td class="line">	bmap = isl_basic_map_update_from_tab(bmap, tab);</td></tr>
+<tr><td class="num" id="LN47">47</td><td class="line">	isl_tab_free(tab);</td></tr>
+<tr><td class="num" id="LN48">48</td><td class="line">	bmap = isl_basic_map_gauss(bmap, <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>);</td></tr>
+<tr><td class="num" id="LN49">49</td><td class="line">	<span class='macro'>ISL_F_SET(bmap, ISL_BASIC_MAP_NO_IMPLICIT)<span class='expansion'>(((bmap)-&gt;flags) |= ((1 &lt;&lt; 2)))</span></span>;</td></tr>
+<tr><td class="num" id="LN50">50</td><td class="line">	<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN51">51</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN52">52</td><td class="line">	isl_tab_free(tab);</td></tr>
+<tr><td class="num" id="LN53">53</td><td class="line">	isl_basic_map_free(bmap);</td></tr>
+<tr><td class="num" id="LN54">54</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN55">55</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN56">56</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN57">57</td><td class="line"><span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *isl_basic_set_implicit_equalities(</td></tr>
+<tr><td class="num" id="LN58">58</td><td class="line">						<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset)</td></tr>
+<tr><td class="num" id="LN59">59</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN60">60</td><td class="line">	<span class='keyword'>return</span> (<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *)</td></tr>
+<tr><td class="num" id="LN61">61</td><td class="line">		isl_basic_map_implicit_equalities((<span class='keyword'>struct</span> isl_basic_map*)bset);</td></tr>
+<tr><td class="num" id="LN62">62</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN63">63</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN64">64</td><td class="line"><span class='keyword'>struct</span> isl_map *isl_map_implicit_equalities(<span class='keyword'>struct</span> isl_map *map)</td></tr>
+<tr><td class="num" id="LN65">65</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN66">66</td><td class="line">	<span class='keyword'>int</span> i;</td></tr>
+<tr><td class="num" id="LN67">67</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN68">68</td><td class="line">	<span class='keyword'>if</span> (!map)</td></tr>
+<tr><td class="num" id="LN69">69</td><td class="line">		<span class='keyword'>return</span> map;</td></tr>
+<tr><td class="num" id="LN70">70</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN71">71</td><td class="line">	<span class='keyword'>for</span> (i = 0; i &lt; map-&gt;n; ++i) {</td></tr>
+<tr><td class="num" id="LN72">72</td><td class="line">		map-&gt;p[i] = isl_basic_map_implicit_equalities(map-&gt;p[i]);</td></tr>
+<tr><td class="num" id="LN73">73</td><td class="line">		<span class='keyword'>if</span> (!map-&gt;p[i])</td></tr>
+<tr><td class="num" id="LN74">74</td><td class="line">			<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN75">75</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN76">76</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN77">77</td><td class="line">	<span class='keyword'>return</span> map;</td></tr>
+<tr><td class="num" id="LN78">78</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN79">79</td><td class="line">	isl_map_free(map);</td></tr>
+<tr><td class="num" id="LN80">80</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN81">81</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN82">82</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN83">83</td><td class="line"><span class='comment'>/* Make eq[row][col] of both bmaps equal so we can add the row</span></td></tr>
+<tr><td class="num" id="LN84">84</td><td class="line"> <span class='comment'>* add the column to the common matrix.</span></td></tr>
+<tr><td class="num" id="LN85">85</td><td class="line"> <span class='comment'>* Note that because of the echelon form, the columns of row row</span></td></tr>
+<tr><td class="num" id="LN86">86</td><td class="line"> <span class='comment'>* after column col are zero.</span></td></tr>
+<tr><td class="num" id="LN87">87</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN88">88</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>void</span> set_common_multiple(</td></tr>
+<tr><td class="num" id="LN89">89</td><td class="line">	<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset1, <span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset2,</td></tr>
+<tr><td class="num" id="LN90">90</td><td class="line">	<span class='keyword'>unsigned</span> row, <span class='keyword'>unsigned</span> col)</td></tr>
+<tr><td class="num" id="LN91">91</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN92">92</td><td class="line">	isl_int m, c;</td></tr>
+<tr><td class="num" id="LN93">93</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN94">94</td><td class="line">	<span class='keyword'>if</span> (<span class='macro'>isl_int_eq(bset1-&gt;eq[row][col], bset2-&gt;eq[row][col])<span class='expansion'>(isl_sioimath_cmp(*(bset1-&gt;eq[row][col]), *(bset2-&gt;eq[row<br>][col])) == 0)</span></span>)</td></tr>
+<tr><td class="num" id="LN95">95</td><td class="line">		<span class='keyword'>return</span>;</td></tr>
+<tr><td class="num" id="LN96">96</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN97">97</td><td class="line">	<span class='macro'>isl_int_init(c)<span class='expansion'>isl_sioimath_init((c))</span></span>;</td></tr>
+<tr><td class="num" id="LN98">98</td><td class="line">	<span class='macro'>isl_int_init(m)<span class='expansion'>isl_sioimath_init((m))</span></span>;</td></tr>
+<tr><td class="num" id="LN99">99</td><td class="line">	<span class='macro'>isl_int_lcm(m, bset1-&gt;eq[row][col], bset2-&gt;eq[row][col])<span class='expansion'>isl_sioimath_lcm((m), *(bset1-&gt;eq[row][col]), *(bset2-&gt;<br>eq[row][col]))</span></span>;</td></tr>
+<tr><td class="num" id="LN100">100</td><td class="line">	<span class='macro'>isl_int_divexact(c, m, bset1-&gt;eq[row][col])<span class='expansion'>isl_sioimath_tdiv_q((c), *(m), *(bset1-&gt;eq[row][col]))</span></span>;</td></tr>
+<tr><td class="num" id="LN101">101</td><td class="line">	isl_seq_scale(bset1-&gt;eq[row], bset1-&gt;eq[row], c, col+1);</td></tr>
+<tr><td class="num" id="LN102">102</td><td class="line">	<span class='macro'>isl_int_divexact(c, m, bset2-&gt;eq[row][col])<span class='expansion'>isl_sioimath_tdiv_q((c), *(m), *(bset2-&gt;eq[row][col]))</span></span>;</td></tr>
+<tr><td class="num" id="LN103">103</td><td class="line">	isl_seq_scale(bset2-&gt;eq[row], bset2-&gt;eq[row], c, col+1);</td></tr>
+<tr><td class="num" id="LN104">104</td><td class="line">	<span class='macro'>isl_int_clear(c)<span class='expansion'>isl_sioimath_clear((c))</span></span>;</td></tr>
+<tr><td class="num" id="LN105">105</td><td class="line">	<span class='macro'>isl_int_clear(m)<span class='expansion'>isl_sioimath_clear((m))</span></span>;</td></tr>
+<tr><td class="num" id="LN106">106</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN107">107</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN108">108</td><td class="line"><span class='comment'>/* Delete a given equality, moving all the following equalities one up.</span></td></tr>
+<tr><td class="num" id="LN109">109</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN110">110</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>void</span> delete_row(<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset, <span class='keyword'>unsigned</span> row)</td></tr>
+<tr><td class="num" id="LN111">111</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN112">112</td><td class="line">	isl_int *t;</td></tr>
+<tr><td class="num" id="LN113">113</td><td class="line">	<span class='keyword'>int</span> r;</td></tr>
+<tr><td class="num" id="LN114">114</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN115">115</td><td class="line">	t = bset-&gt;eq[row];</td></tr>
+<tr><td class="num" id="LN116">116</td><td class="line">	bset-&gt;n_eq--;</td></tr>
+<tr><td class="num" id="LN117">117</td><td class="line">	<span class='keyword'>for</span> (r = row; r &lt; bset-&gt;n_eq; ++r)</td></tr>
+<tr><td class="num" id="LN118">118</td><td class="line">		bset-&gt;eq[r] = bset-&gt;eq[r+1];</td></tr>
+<tr><td class="num" id="LN119">119</td><td class="line">	bset-&gt;eq[bset-&gt;n_eq] = t;</td></tr>
+<tr><td class="num" id="LN120">120</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN121">121</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN122">122</td><td class="line"><span class='comment'>/* Make first row entries in column col of bset1 identical to</span></td></tr>
+<tr><td class="num" id="LN123">123</td><td class="line"> <span class='comment'>* those of bset2, using the fact that entry bset1-&gt;eq[row][col]=a</span></td></tr>
+<tr><td class="num" id="LN124">124</td><td class="line"> <span class='comment'>* is non-zero.  Initially, these elements of bset1 are all zero.</span></td></tr>
+<tr><td class="num" id="LN125">125</td><td class="line"> <span class='comment'>* For each row i &lt; row, we set</span></td></tr>
+<tr><td class="num" id="LN126">126</td><td class="line"> <span class='comment'>*		A[i] = a * A[i] + B[i][col] * A[row]</span></td></tr>
+<tr><td class="num" id="LN127">127</td><td class="line"> <span class='comment'>*		B[i] = a * B[i]</span></td></tr>
+<tr><td class="num" id="LN128">128</td><td class="line"> <span class='comment'>* so that</span></td></tr>
+<tr><td class="num" id="LN129">129</td><td class="line"> <span class='comment'>*		A[i][col] = B[i][col] = a * old(B[i][col])</span></td></tr>
+<tr><td class="num" id="LN130">130</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN131">131</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>void</span> construct_column(</td></tr>
+<tr><td class="num" id="LN132">132</td><td class="line">	<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset1, <span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset2,</td></tr>
+<tr><td class="num" id="LN133">133</td><td class="line">	<span class='keyword'>unsigned</span> row, <span class='keyword'>unsigned</span> col)</td></tr>
+<tr><td class="num" id="LN134">134</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN135">135</td><td class="line">	<span class='keyword'>int</span> r;</td></tr>
+<tr><td class="num" id="LN136">136</td><td class="line">	isl_int a;</td></tr>
+<tr><td class="num" id="LN137">137</td><td class="line">	isl_int b;</td></tr>
+<tr><td class="num" id="LN138">138</td><td class="line">	<span class='keyword'>unsigned</span> total;</td></tr>
+<tr><td class="num" id="LN139">139</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN140">140</td><td class="line">	<span class='macro'>isl_int_init(a)<span class='expansion'>isl_sioimath_init((a))</span></span>;</td></tr>
+<tr><td class="num" id="LN141">141</td><td class="line">	<span class='macro'>isl_int_init(b)<span class='expansion'>isl_sioimath_init((b))</span></span>;</td></tr>
+<tr><td class="num" id="LN142">142</td><td class="line">	total = 1 + isl_basic_set_n_dim(bset1);</td></tr>
+<tr><td class="num" id="LN143">143</td><td class="line">	<span class='keyword'>for</span> (r = 0; r &lt; row; ++r) {</td></tr>
+<tr><td class="num" id="LN144">144</td><td class="line">		<span class='keyword'>if</span> (<span class='macro'>isl_int_is_zero(bset2-&gt;eq[r][col])<span class='expansion'>(isl_sioimath_sgn(*(bset2-&gt;eq[r][col])) == 0)</span></span>)</td></tr>
+<tr><td class="num" id="LN145">145</td><td class="line">			<span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN146">146</td><td class="line">		<span class='macro'>isl_int_gcd(b, bset2-&gt;eq[r][col], bset1-&gt;eq[row][col])<span class='expansion'>isl_sioimath_gcd((b), *(bset2-&gt;eq[r][col]), *(bset1-&gt;eq<br>[row][col]))</span></span>;</td></tr>
+<tr><td class="num" id="LN147">147</td><td class="line">		<span class='macro'>isl_int_divexact(a, bset1-&gt;eq[row][col], b)<span class='expansion'>isl_sioimath_tdiv_q((a), *(bset1-&gt;eq[row][col]), *(b))</span></span>;</td></tr>
+<tr><td class="num" id="LN148">148</td><td class="line">		<span class='macro'>isl_int_divexact(b, bset2-&gt;eq[r][col], b)<span class='expansion'>isl_sioimath_tdiv_q((b), *(bset2-&gt;eq[r][col]), *(b))</span></span>;</td></tr>
+<tr><td class="num" id="LN149">149</td><td class="line">		isl_seq_combine(bset1-&gt;eq[r], a, bset1-&gt;eq[r],</td></tr>
+<tr><td class="num" id="LN150">150</td><td class="line">					      b, bset1-&gt;eq[row], total);</td></tr>
+<tr><td class="num" id="LN151">151</td><td class="line">		isl_seq_scale(bset2-&gt;eq[r], bset2-&gt;eq[r], a, total);</td></tr>
+<tr><td class="num" id="LN152">152</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN153">153</td><td class="line">	<span class='macro'>isl_int_clear(a)<span class='expansion'>isl_sioimath_clear((a))</span></span>;</td></tr>
+<tr><td class="num" id="LN154">154</td><td class="line">	<span class='macro'>isl_int_clear(b)<span class='expansion'>isl_sioimath_clear((b))</span></span>;</td></tr>
+<tr><td class="num" id="LN155">155</td><td class="line">	delete_row(bset1, row);</td></tr>
+<tr><td class="num" id="LN156">156</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN157">157</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN158">158</td><td class="line"><span class='comment'>/* Make first row entries in column col of bset1 identical to</span></td></tr>
+<tr><td class="num" id="LN159">159</td><td class="line"> <span class='comment'>* those of bset2, using only these entries of the two matrices.</span></td></tr>
+<tr><td class="num" id="LN160">160</td><td class="line"> <span class='comment'>* Let t be the last row with different entries.</span></td></tr>
+<tr><td class="num" id="LN161">161</td><td class="line"> <span class='comment'>* For each row i &lt; t, we set</span></td></tr>
+<tr><td class="num" id="LN162">162</td><td class="line"> <span class='comment'>*	A[i] = (A[t][col]-B[t][col]) * A[i] + (B[i][col]-A[i][col) * A[t]</span></td></tr>
+<tr><td class="num" id="LN163">163</td><td class="line"> <span class='comment'>*	B[i] = (A[t][col]-B[t][col]) * B[i] + (B[i][col]-A[i][col) * B[t]</span></td></tr>
+<tr><td class="num" id="LN164">164</td><td class="line"> <span class='comment'>* so that</span></td></tr>
+<tr><td class="num" id="LN165">165</td><td class="line"> <span class='comment'>*	A[i][col] = B[i][col] = old(A[t][col]*B[i][col]-A[i][col]*B[t][col])</span></td></tr>
+<tr><td class="num" id="LN166">166</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN167">167</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>int</span> transform_column(</td></tr>
+<tr><td class="num" id="LN168">168</td><td class="line">	<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset1, <span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset2,</td></tr>
+<tr><td class="num" id="LN169">169</td><td class="line">	<span class='keyword'>unsigned</span> row, <span class='keyword'>unsigned</span> col)</td></tr>
+<tr><td class="num" id="LN170">170</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN171">171</td><td class="line">	<span class='keyword'>int</span> i, t;</td></tr>
+<tr><td class="num" id="LN172">172</td><td class="line">	isl_int a, b, g;</td></tr>
+<tr><td class="num" id="LN173">173</td><td class="line">	<span class='keyword'>unsigned</span> total;</td></tr>
+<tr><td class="num" id="LN174">174</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN175">175</td><td class="line">	<span class='keyword'>for</span> (t = row-1; t &gt;= 0; --t)</td></tr>
+<tr><td class="num" id="LN176">176</td><td class="line">		<span class='keyword'>if</span> (<span class='macro'>isl_int_ne(bset1-&gt;eq[t][col], bset2-&gt;eq[t][col])<span class='expansion'>(isl_sioimath_cmp(*(bset1-&gt;eq[t][col]), *(bset2-&gt;eq[t][<br>col])) != 0)</span></span>)</td></tr>
+<tr><td class="num" id="LN177">177</td><td class="line">			<span class='keyword'>break</span>;</td></tr>
+<tr><td class="num" id="LN178">178</td><td class="line">	<span class='keyword'>if</span> (t &lt; 0)</td></tr>
+<tr><td class="num" id="LN179">179</td><td class="line">		<span class='keyword'>return</span> 0;</td></tr>
+<tr><td class="num" id="LN180">180</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN181">181</td><td class="line">	total = 1 + isl_basic_set_n_dim(bset1);</td></tr>
+<tr><td class="num" id="LN182">182</td><td class="line">	<span class='macro'>isl_int_init(a)<span class='expansion'>isl_sioimath_init((a))</span></span>;</td></tr>
+<tr><td class="num" id="LN183">183</td><td class="line">	<span class='macro'>isl_int_init(b)<span class='expansion'>isl_sioimath_init((b))</span></span>;</td></tr>
+<tr><td class="num" id="LN184">184</td><td class="line">	<span class='macro'>isl_int_init(g)<span class='expansion'>isl_sioimath_init((g))</span></span>;</td></tr>
+<tr><td class="num" id="LN185">185</td><td class="line">	<span class='macro'>isl_int_sub(b, bset1-&gt;eq[t][col], bset2-&gt;eq[t][col])<span class='expansion'>isl_sioimath_sub((b), *(bset1-&gt;eq[t][col]), *(bset2-&gt;eq<br>[t][col]))</span></span>;</td></tr>
+<tr><td class="num" id="LN186">186</td><td class="line">	<span class='keyword'>for</span> (i = 0; i &lt; t; ++i) {</td></tr>
+<tr><td class="num" id="LN187">187</td><td class="line">		<span class='macro'>isl_int_sub(a, bset2-&gt;eq[i][col], bset1-&gt;eq[i][col])<span class='expansion'>isl_sioimath_sub((a), *(bset2-&gt;eq[i][col]), *(bset1-&gt;eq<br>[i][col]))</span></span>;</td></tr>
+<tr><td class="num" id="LN188">188</td><td class="line">		<span class='macro'>isl_int_gcd(g, a, b)<span class='expansion'>isl_sioimath_gcd((g), *(a), *(b))</span></span>;</td></tr>
+<tr><td class="num" id="LN189">189</td><td class="line">		<span class='macro'>isl_int_divexact(a, a, g)<span class='expansion'>isl_sioimath_tdiv_q((a), *(a), *(g))</span></span>;</td></tr>
+<tr><td class="num" id="LN190">190</td><td class="line">		<span class='macro'>isl_int_divexact(g, b, g)<span class='expansion'>isl_sioimath_tdiv_q((g), *(b), *(g))</span></span>;</td></tr>
+<tr><td class="num" id="LN191">191</td><td class="line">		isl_seq_combine(bset1-&gt;eq[i], g, bset1-&gt;eq[i], a, bset1-&gt;eq[t],</td></tr>
+<tr><td class="num" id="LN192">192</td><td class="line">				total);</td></tr>
+<tr><td class="num" id="LN193">193</td><td class="line">		isl_seq_combine(bset2-&gt;eq[i], g, bset2-&gt;eq[i], a, bset2-&gt;eq[t],</td></tr>
+<tr><td class="num" id="LN194">194</td><td class="line">				total);</td></tr>
+<tr><td class="num" id="LN195">195</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN196">196</td><td class="line">	<span class='macro'>isl_int_clear(a)<span class='expansion'>isl_sioimath_clear((a))</span></span>;</td></tr>
+<tr><td class="num" id="LN197">197</td><td class="line">	<span class='macro'>isl_int_clear(b)<span class='expansion'>isl_sioimath_clear((b))</span></span>;</td></tr>
+<tr><td class="num" id="LN198">198</td><td class="line">	<span class='macro'>isl_int_clear(g)<span class='expansion'>isl_sioimath_clear((g))</span></span>;</td></tr>
+<tr><td class="num" id="LN199">199</td><td class="line">	delete_row(bset1, t);</td></tr>
+<tr><td class="num" id="LN200">200</td><td class="line">	delete_row(bset2, t);</td></tr>
+<tr><td class="num" id="LN201">201</td><td class="line">	<span class='keyword'>return</span> 1;</td></tr>
+<tr><td class="num" id="LN202">202</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN203">203</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN204">204</td><td class="line"><span class='comment'>/* The implementation is based on Section 5.2 of Michael Karr,</span></td></tr>
+<tr><td class="num" id="LN205">205</td><td class="line"> <span class='comment'>* "Affine Relationships Among Variables of a Program",</span></td></tr>
+<tr><td class="num" id="LN206">206</td><td class="line"> <span class='comment'>* except that the echelon form we use starts from the last column</span></td></tr>
+<tr><td class="num" id="LN207">207</td><td class="line"> <span class='comment'>* and that we are dealing with integer coefficients.</span></td></tr>
+<tr><td class="num" id="LN208">208</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN209">209</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *affine_hull(</td></tr>
+<tr><td class="num" id="LN210">210</td><td class="line">	<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset1, <span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset2)</td></tr>
+<tr><td class="num" id="LN211">211</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN212">212</td><td class="line">	<span class='keyword'>unsigned</span> total;</td></tr>
+<tr><td class="num" id="LN213">213</td><td class="line">	<span class='keyword'>int</span> col;</td></tr>
+<tr><td class="num" id="LN214">214</td><td class="line">	<span class='keyword'>int</span> row;</td></tr>
+<tr><td class="num" id="LN215">215</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN216">216</td><td class="line">	<span class='keyword'>if</span> (!bset1 || !bset2)</td></tr>
+<tr><td class="num" id="LN217">217</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN218">218</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN219">219</td><td class="line">	total = 1 + isl_basic_set_n_dim(bset1);</td></tr>
+<tr><td class="num" id="LN220">220</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN221">221</td><td class="line">	row = 0;</td></tr>
+<tr><td class="num" id="LN222">222</td><td class="line">	<span class='keyword'>for</span> (col = total-1; col &gt;= 0; --col) {</td></tr>
+<tr><td class="num" id="LN223">223</td><td class="line">		<span class='keyword'>int</span> is_zero1 = row &gt;= bset1-&gt;n_eq ||</td></tr>
+<tr><td class="num" id="LN224">224</td><td class="line">			<span class='macro'>isl_int_is_zero(bset1-&gt;eq[row][col])<span class='expansion'>(isl_sioimath_sgn(*(bset1-&gt;eq[row][col])) == 0)</span></span>;</td></tr>
+<tr><td class="num" id="LN225">225</td><td class="line">		<span class='keyword'>int</span> is_zero2 = row &gt;= bset2-&gt;n_eq ||</td></tr>
+<tr><td class="num" id="LN226">226</td><td class="line">			<span class='macro'>isl_int_is_zero(bset2-&gt;eq[row][col])<span class='expansion'>(isl_sioimath_sgn(*(bset2-&gt;eq[row][col])) == 0)</span></span>;</td></tr>
+<tr><td class="num" id="LN227">227</td><td class="line">		<span class='keyword'>if</span> (!is_zero1 &amp;&amp; !is_zero2) {</td></tr>
+<tr><td class="num" id="LN228">228</td><td class="line">			set_common_multiple(bset1, bset2, row, col);</td></tr>
+<tr><td class="num" id="LN229">229</td><td class="line">			++row;</td></tr>
+<tr><td class="num" id="LN230">230</td><td class="line">		} <span class='keyword'>else</span> <span class='keyword'>if</span> (!is_zero1 &amp;&amp; is_zero2) {</td></tr>
+<tr><td class="num" id="LN231">231</td><td class="line">			construct_column(bset1, bset2, row, col);</td></tr>
+<tr><td class="num" id="LN232">232</td><td class="line">		} <span class='keyword'>else</span> <span class='keyword'>if</span> (is_zero1 &amp;&amp; !is_zero2) {</td></tr>
+<tr><td class="num" id="LN233">233</td><td class="line">			construct_column(bset2, bset1, row, col);</td></tr>
+<tr><td class="num" id="LN234">234</td><td class="line">		} <span class='keyword'>else</span> {</td></tr>
+<tr><td class="num" id="LN235">235</td><td class="line">			<span class='keyword'>if</span> (transform_column(bset1, bset2, row, col))</td></tr>
+<tr><td class="num" id="LN236">236</td><td class="line">				--row;</td></tr>
+<tr><td class="num" id="LN237">237</td><td class="line">		}</td></tr>
+<tr><td class="num" id="LN238">238</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN239">239</td><td class="line">	<span class='macro'>isl_assert(bset1-&gt;ctx, row == bset1-&gt;n_eq, <span class='keyword'>goto</span> error)<span class='expansion'>do { if (row == bset1-&gt;n_eq) break; do { isl_handle_error(<br>bset1-&gt;ctx, isl_error_unknown, "Assertion \"" "row == bset1-&gt;n_eq"<br> "\" failed", "/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_affine_hull.c"<br>, 239); goto error; } while (0); } while (0)</span></span>;</td></tr>
+<tr><td class="num" id="LN240">240</td><td class="line">	isl_basic_set_free(bset2);</td></tr>
+<tr><td class="num" id="LN241">241</td><td class="line">	bset1 = isl_basic_set_normalize_constraints(bset1);</td></tr>
+<tr><td class="num" id="LN242">242</td><td class="line">	<span class='keyword'>return</span> bset1;</td></tr>
+<tr><td class="num" id="LN243">243</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN244">244</td><td class="line">	isl_basic_set_free(bset1);</td></tr>
+<tr><td class="num" id="LN245">245</td><td class="line">	isl_basic_set_free(bset2);</td></tr>
+<tr><td class="num" id="LN246">246</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN247">247</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN248">248</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN249">249</td><td class="line"><span class='comment'>/* Find an integer point in the set represented by "tab"</span></td></tr>
+<tr><td class="num" id="LN250">250</td><td class="line"> <span class='comment'>* that lies outside of the equality "eq" e(x) = 0.</span></td></tr>
+<tr><td class="num" id="LN251">251</td><td class="line"> <span class='comment'>* If "up" is true, look for a point satisfying e(x) - 1 &gt;= 0.</span></td></tr>
+<tr><td class="num" id="LN252">252</td><td class="line"> <span class='comment'>* Otherwise, look for a point satisfying -e(x) - 1 &gt;= 0 (i.e., e(x) &lt;= -1).</span></td></tr>
+<tr><td class="num" id="LN253">253</td><td class="line"> <span class='comment'>* The point, if found, is returned.</span></td></tr>
+<tr><td class="num" id="LN254">254</td><td class="line"> <span class='comment'>* If no point can be found, a zero-length vector is returned.</span></td></tr>
+<tr><td class="num" id="LN255">255</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN256">256</td><td class="line"> <span class='comment'>* Before solving an ILP problem, we first check if simply</span></td></tr>
+<tr><td class="num" id="LN257">257</td><td class="line"> <span class='comment'>* adding the normal of the constraint to one of the known</span></td></tr>
+<tr><td class="num" id="LN258">258</td><td class="line"> <span class='comment'>* integer points in the basic set represented by "tab"</span></td></tr>
+<tr><td class="num" id="LN259">259</td><td class="line"> <span class='comment'>* yields another point inside the basic set.</span></td></tr>
+<tr><td class="num" id="LN260">260</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN261">261</td><td class="line"> <span class='comment'>* The caller of this function ensures that the tableau is bounded or</span></td></tr>
+<tr><td class="num" id="LN262">262</td><td class="line"> <span class='comment'>* that tab-&gt;basis and tab-&gt;n_unbounded have been set appropriately.</span></td></tr>
+<tr><td class="num" id="LN263">263</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN264">264</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>struct</span> isl_vec *outside_point(<span class='keyword'>struct</span> isl_tab *tab, isl_int *eq, <span class='keyword'>int</span> up)</td></tr>
+<tr><td class="num" id="LN265">265</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN266">266</td><td class="line">	<span class='keyword'>struct</span> isl_ctx *ctx;</td></tr>
+<tr><td class="num" id="LN267">267</td><td class="line">	<span class='keyword'>struct</span> isl_vec *sample = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN268">268</td><td class="line">	<span class='keyword'>struct</span> isl_tab_undo *snap;</td></tr>
+<tr><td class="num" id="LN269">269</td><td class="line">	<span class='keyword'>unsigned</span> dim;</td></tr>
+<tr><td class="num" id="LN270">270</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN271">271</td><td class="line">	<span class='keyword'>if</span> (!tab)</td></tr>
+<tr><td class="num" id="LN272">272</td><td class="line">		<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN273">273</td><td class="line">	ctx = tab-&gt;mat-&gt;ctx;</td></tr>
+<tr><td class="num" id="LN274">274</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN275">275</td><td class="line">	dim = tab-&gt;n_var;</td></tr>
+<tr><td class="num" id="LN276">276</td><td class="line">	sample = isl_vec_alloc(ctx, 1 + dim);</td></tr>
+<tr><td class="num" id="LN277">277</td><td class="line">	<span class='keyword'>if</span> (!sample)</td></tr>
+<tr><td class="num" id="LN278">278</td><td class="line">		<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN279">279</td><td class="line">	<span class='macro'>isl_int_set_si(sample-&gt;el[0], 1)<span class='expansion'>isl_sioimath_set_si((sample-&gt;el[0]), 1)</span></span>;</td></tr>
+<tr><td class="num" id="LN280">280</td><td class="line">	isl_seq_combine(sample-&gt;el + 1,</td></tr>
+<tr><td class="num" id="LN281">281</td><td class="line">		ctx-&gt;one, tab-&gt;bmap-&gt;sample-&gt;el + 1,</td></tr>
+<tr><td class="num" id="LN282">282</td><td class="line">		up ? ctx-&gt;one : ctx-&gt;negone, eq + 1, dim);</td></tr>
+<tr><td class="num" id="LN283">283</td><td class="line">	<span class='keyword'>if</span> (isl_basic_map_contains(tab-&gt;bmap, sample))</td></tr>
+<tr><td class="num" id="LN284">284</td><td class="line">		<span class='keyword'>return</span> sample;</td></tr>
+<tr><td class="num" id="LN285">285</td><td class="line">	isl_vec_free(sample);</td></tr>
+<tr><td class="num" id="LN286">286</td><td class="line">	sample = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN287">287</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN288">288</td><td class="line">	snap = isl_tab_snap(tab);</td></tr>
+<tr><td class="num" id="LN289">289</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN290">290</td><td class="line">	<span class='keyword'>if</span> (!up)</td></tr>
+<tr><td class="num" id="LN291">291</td><td class="line">		isl_seq_neg(eq, eq, 1 + dim);</td></tr>
+<tr><td class="num" id="LN292">292</td><td class="line">	<span class='macro'>isl_int_sub_ui(eq[0], eq[0], 1)<span class='expansion'>isl_sioimath_sub_ui((eq[0]), *(eq[0]), 1)</span></span>;</td></tr>
+<tr><td class="num" id="LN293">293</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN294">294</td><td class="line">	<span class='keyword'>if</span> (isl_tab_extend_cons(tab, 1) &lt; 0)</td></tr>
+<tr><td class="num" id="LN295">295</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN296">296</td><td class="line">	<span class='keyword'>if</span> (isl_tab_add_ineq(tab, eq) &lt; 0)</td></tr>
+<tr><td class="num" id="LN297">297</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN298">298</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN299">299</td><td class="line">	sample = isl_tab_sample(tab);</td></tr>
+<tr><td class="num" id="LN300">300</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN301">301</td><td class="line">	<span class='macro'>isl_int_add_ui(eq[0], eq[0], 1)<span class='expansion'>isl_sioimath_add_ui((eq[0]), *(eq[0]), 1)</span></span>;</td></tr>
+<tr><td class="num" id="LN302">302</td><td class="line">	<span class='keyword'>if</span> (!up)</td></tr>
+<tr><td class="num" id="LN303">303</td><td class="line">		isl_seq_neg(eq, eq, 1 + dim);</td></tr>
+<tr><td class="num" id="LN304">304</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN305">305</td><td class="line">	<span class='keyword'>if</span> (sample &amp;&amp; isl_tab_rollback(tab, snap) &lt; 0)</td></tr>
+<tr><td class="num" id="LN306">306</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN307">307</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN308">308</td><td class="line">	<span class='keyword'>return</span> sample;</td></tr>
+<tr><td class="num" id="LN309">309</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN310">310</td><td class="line">	isl_vec_free(sample);</td></tr>
+<tr><td class="num" id="LN311">311</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN312">312</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN313">313</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN314">314</td><td class="line"><span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *isl_basic_set_recession_cone(<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset)</td></tr>
+<tr><td class="num" id="LN315">315</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN316">316</td><td class="line">	<span class='keyword'>int</span> i;</td></tr>
+<tr><td class="num" id="LN317">317</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN318">318</td><td class="line">	bset = isl_basic_set_cow(bset);</td></tr>
+<tr><td class="num" id="LN319">319</td><td class="line">	<span class='keyword'>if</span> (!bset)</td></tr>
+<tr><td class="num" id="LN320">320</td><td class="line">		<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN321">321</td><td class="line">	<span class='macro'>isl_assert(bset-&gt;ctx, bset-&gt;n_div == 0, <span class='keyword'>goto</span> error)<span class='expansion'>do { if (bset-&gt;n_div == 0) break; do { isl_handle_error(bset<br>-&gt;ctx, isl_error_unknown, "Assertion \"" "bset-&gt;n_div == 0"<br> "\" failed", "/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_affine_hull.c"<br>, 321); goto error; } while (0); } while (0)</span></span>;</td></tr>
+<tr><td class="num" id="LN322">322</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN323">323</td><td class="line">	<span class='keyword'>for</span> (i = 0; i &lt; bset-&gt;n_eq; ++i)</td></tr>
+<tr><td class="num" id="LN324">324</td><td class="line">		<span class='macro'>isl_int_set_si(bset-&gt;eq[i][0], 0)<span class='expansion'>isl_sioimath_set_si((bset-&gt;eq[i][0]), 0)</span></span>;</td></tr>
+<tr><td class="num" id="LN325">325</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN326">326</td><td class="line">	<span class='keyword'>for</span> (i = 0; i &lt; bset-&gt;n_ineq; ++i)</td></tr>
+<tr><td class="num" id="LN327">327</td><td class="line">		<span class='macro'>isl_int_set_si(bset-&gt;ineq[i][0], 0)<span class='expansion'>isl_sioimath_set_si((bset-&gt;ineq[i][0]), 0)</span></span>;</td></tr>
+<tr><td class="num" id="LN328">328</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN329">329</td><td class="line">	<span class='macro'>ISL_F_CLR(bset, ISL_BASIC_SET_NO_IMPLICIT)<span class='expansion'>(((bset)-&gt;flags) &amp;= ~((1 &lt;&lt; 2)))</span></span>;</td></tr>
+<tr><td class="num" id="LN330">330</td><td class="line">	<span class='keyword'>return</span> isl_basic_set_implicit_equalities(bset);</td></tr>
+<tr><td class="num" id="LN331">331</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN332">332</td><td class="line">	isl_basic_set_free(bset);</td></tr>
+<tr><td class="num" id="LN333">333</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN334">334</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN335">335</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN336">336</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> <span class='macro'>isl_set<span class='expansion'>isl_map</span></span> *isl_set_recession_cone(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> <span class='macro'>isl_set<span class='expansion'>isl_map</span></span> *set)</td></tr>
+<tr><td class="num" id="LN337">337</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN338">338</td><td class="line">	<span class='keyword'>int</span> i;</td></tr>
+<tr><td class="num" id="LN339">339</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN340">340</td><td class="line">	<span class='keyword'>if</span> (!set)</td></tr>
+<tr><td class="num" id="LN341">341</td><td class="line">		<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN342">342</td><td class="line">	<span class='keyword'>if</span> (set-&gt;n == 0)</td></tr>
+<tr><td class="num" id="LN343">343</td><td class="line">		<span class='keyword'>return</span> set;</td></tr>
+<tr><td class="num" id="LN344">344</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN345">345</td><td class="line">	set = isl_set_remove_divs(set);</td></tr>
+<tr><td class="num" id="LN346">346</td><td class="line">	set = isl_set_cow(set);</td></tr>
+<tr><td class="num" id="LN347">347</td><td class="line">	<span class='keyword'>if</span> (!set)</td></tr>
+<tr><td class="num" id="LN348">348</td><td class="line">		<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN349">349</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN350">350</td><td class="line">	<span class='keyword'>for</span> (i = 0; i &lt; set-&gt;n; ++i) {</td></tr>
+<tr><td class="num" id="LN351">351</td><td class="line">		set-&gt;p[i] = isl_basic_set_recession_cone(set-&gt;p[i]);</td></tr>
+<tr><td class="num" id="LN352">352</td><td class="line">		<span class='keyword'>if</span> (!set-&gt;p[i])</td></tr>
+<tr><td class="num" id="LN353">353</td><td class="line">			<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN354">354</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN355">355</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN356">356</td><td class="line">	<span class='keyword'>return</span> set;</td></tr>
+<tr><td class="num" id="LN357">357</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN358">358</td><td class="line">	isl_set_free(set);</td></tr>
+<tr><td class="num" id="LN359">359</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN360">360</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN361">361</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN362">362</td><td class="line"><span class='comment'>/* Move "sample" to a point that is one up (or down) from the original</span></td></tr>
+<tr><td class="num" id="LN363">363</td><td class="line"> <span class='comment'>* point in dimension "pos".</span></td></tr>
+<tr><td class="num" id="LN364">364</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN365">365</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>void</span> adjacent_point(__isl_keep isl_vec *sample, <span class='keyword'>int</span> pos, <span class='keyword'>int</span> up)</td></tr>
+<tr><td class="num" id="LN366">366</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN367">367</td><td class="line">	<span class='keyword'>if</span> (up)</td></tr>
+<tr><td class="num" id="LN368">368</td><td class="line">		<span class='macro'>isl_int_add_ui(sample-&gt;el[1 + pos], sample-&gt;el[1 + pos], 1)<span class='expansion'>isl_sioimath_add_ui((sample-&gt;el[1 + pos]), *(sample-&gt;el<br>[1 + pos]), 1)</span></span>;</td></tr>
+<tr><td class="num" id="LN369">369</td><td class="line">	<span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN370">370</td><td class="line">		<span class='macro'>isl_int_sub_ui(sample-&gt;el[1 + pos], sample-&gt;el[1 + pos], 1)<span class='expansion'>isl_sioimath_sub_ui((sample-&gt;el[1 + pos]), *(sample-&gt;el<br>[1 + pos]), 1)</span></span>;</td></tr>
+<tr><td class="num" id="LN371">371</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN372">372</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN373">373</td><td class="line"><span class='comment'>/* Check if any points that are adjacent to "sample" also belong to "bset".</span></td></tr>
+<tr><td class="num" id="LN374">374</td><td class="line"> <span class='comment'>* If so, add them to "hull" and return the updated hull.</span></td></tr>
+<tr><td class="num" id="LN375">375</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN376">376</td><td class="line"> <span class='comment'>* Before checking whether and adjacent point belongs to "bset", we first</span></td></tr>
+<tr><td class="num" id="LN377">377</td><td class="line"> <span class='comment'>* check whether it already belongs to "hull" as this test is typically</span></td></tr>
+<tr><td class="num" id="LN378">378</td><td class="line"> <span class='comment'>* much cheaper.</span></td></tr>
+<tr><td class="num" id="LN379">379</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN380">380</td><td class="line"><span class='keyword'>static</span> <span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *add_adjacent_points(</td></tr>
+<tr><td class="num" id="LN381">381</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *hull, <span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_vec *sample,</td></tr>
+<tr><td class="num" id="LN382">382</td><td class="line">	__isl_keep <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset)</td></tr>
+<tr><td class="num" id="LN383">383</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN384">384</td><td class="line">	<span class='keyword'>int</span> i, up;</td></tr>
+<tr><td class="num" id="LN385">385</td><td class="line">	<span class='keyword'>int</span> dim;</td></tr>
+<tr><td class="num" id="LN386">386</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN387">387</td><td class="line">	<span class='keyword'>if</span> (!sample)</td></tr>
+<tr><td class="num" id="LN388">388</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN389">389</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN390">390</td><td class="line">	dim = isl_basic_set_dim(hull, isl_dim_set);</td></tr>
+<tr><td class="num" id="LN391">391</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN392">392</td><td class="line">	<span class='keyword'>for</span> (i = 0; i &lt; dim; ++i) {</td></tr>
+<tr><td class="num" id="LN393">393</td><td class="line">		<span class='keyword'>for</span> (up = 0; up &lt;= 1; ++up) {</td></tr>
+<tr><td class="num" id="LN394">394</td><td class="line">			<span class='keyword'>int</span> contains;</td></tr>
+<tr><td class="num" id="LN395">395</td><td class="line">			<span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *point;</td></tr>
+<tr><td class="num" id="LN396">396</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN397">397</td><td class="line">			adjacent_point(sample, i, up);</td></tr>
+<tr><td class="num" id="LN398">398</td><td class="line">			contains = isl_basic_set_contains(hull, sample);</td></tr>
+<tr><td class="num" id="LN399">399</td><td class="line">			<span class='keyword'>if</span> (contains &lt; 0)</td></tr>
+<tr><td class="num" id="LN400">400</td><td class="line">				<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN401">401</td><td class="line">			<span class='keyword'>if</span> (contains) {</td></tr>
+<tr><td class="num" id="LN402">402</td><td class="line">				adjacent_point(sample, i, !up);</td></tr>
+<tr><td class="num" id="LN403">403</td><td class="line">				<span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN404">404</td><td class="line">			}</td></tr>
+<tr><td class="num" id="LN405">405</td><td class="line">			contains = isl_basic_set_contains(bset, sample);</td></tr>
+<tr><td class="num" id="LN406">406</td><td class="line">			<span class='keyword'>if</span> (contains &lt; 0)</td></tr>
+<tr><td class="num" id="LN407">407</td><td class="line">				<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN408">408</td><td class="line">			<span class='keyword'>if</span> (contains) {</td></tr>
+<tr><td class="num" id="LN409">409</td><td class="line">				point = isl_basic_set_from_vec(</td></tr>
+<tr><td class="num" id="LN410">410</td><td class="line">							isl_vec_copy(sample));</td></tr>
+<tr><td class="num" id="LN411">411</td><td class="line">				hull = affine_hull(hull, point);</td></tr>
+<tr><td class="num" id="LN412">412</td><td class="line">			}</td></tr>
+<tr><td class="num" id="LN413">413</td><td class="line">			adjacent_point(sample, i, !up);</td></tr>
+<tr><td class="num" id="LN414">414</td><td class="line">			<span class='keyword'>if</span> (contains)</td></tr>
+<tr><td class="num" id="LN415">415</td><td class="line">				<span class='keyword'>break</span>;</td></tr>
+<tr><td class="num" id="LN416">416</td><td class="line">		}</td></tr>
+<tr><td class="num" id="LN417">417</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN418">418</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN419">419</td><td class="line">	isl_vec_free(sample);</td></tr>
+<tr><td class="num" id="LN420">420</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN421">421</td><td class="line">	<span class='keyword'>return</span> hull;</td></tr>
+<tr><td class="num" id="LN422">422</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN423">423</td><td class="line">	isl_vec_free(sample);</td></tr>
+<tr><td class="num" id="LN424">424</td><td class="line">	isl_basic_set_free(hull);</td></tr>
+<tr><td class="num" id="LN425">425</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN426">426</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN427">427</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN428">428</td><td class="line"><span class='comment'>/* Extend an initial (under-)approximation of the affine hull of basic</span></td></tr>
+<tr><td class="num" id="LN429">429</td><td class="line"> <span class='comment'>* set represented by the tableau "tab"</span></td></tr>
+<tr><td class="num" id="LN430">430</td><td class="line"> <span class='comment'>* by looking for points that do not satisfy one of the equalities</span></td></tr>
+<tr><td class="num" id="LN431">431</td><td class="line"> <span class='comment'>* in the current approximation and adding them to that approximation</span></td></tr>
+<tr><td class="num" id="LN432">432</td><td class="line"> <span class='comment'>* until no such points can be found any more.</span></td></tr>
+<tr><td class="num" id="LN433">433</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN434">434</td><td class="line"> <span class='comment'>* The caller of this function ensures that "tab" is bounded or</span></td></tr>
+<tr><td class="num" id="LN435">435</td><td class="line"> <span class='comment'>* that tab-&gt;basis and tab-&gt;n_unbounded have been set appropriately.</span></td></tr>
+<tr><td class="num" id="LN436">436</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN437">437</td><td class="line"> <span class='comment'>* "bset" may be either NULL or the basic set represented by "tab".</span></td></tr>
+<tr><td class="num" id="LN438">438</td><td class="line"> <span class='comment'>* If "bset" is not NULL, we check for any point we find if any</span></td></tr>
+<tr><td class="num" id="LN439">439</td><td class="line"> <span class='comment'>* of its adjacent points also belong to "bset".</span></td></tr>
+<tr><td class="num" id="LN440">440</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN441">441</td><td class="line"><span class='keyword'>static</span> <span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *extend_affine_hull(<span class='keyword'>struct</span> isl_tab *tab,</td></tr>
+<tr><td class="num" id="LN442">442</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *hull, __isl_keep <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset)</td></tr>
+<tr><td class="num" id="LN443">443</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN444">444</td><td class="line">	<span class='keyword'>int</span> i, j;</td></tr>
+<tr><td class="num" id="LN445">445</td><td class="line">	<span class='keyword'>unsigned</span> dim;</td></tr>
+<tr><td class="num" id="LN446">446</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN447">447</td><td class="line">	<span class='keyword'>if</span> (!tab || !hull)</td></tr>
+<tr><td class="num" id="LN448">448</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN449">449</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN450">450</td><td class="line">	dim = tab-&gt;n_var;</td></tr>
+<tr><td class="num" id="LN451">451</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN452">452</td><td class="line">	<span class='keyword'>if</span> (isl_tab_extend_cons(tab, 2 * dim + 1) &lt; 0)</td></tr>
+<tr><td class="num" id="LN453">453</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN454">454</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN455">455</td><td class="line">	<span class='keyword'>for</span> (i = 0; i &lt; dim; ++i) {</td></tr>
+<tr><td class="num" id="LN456">456</td><td class="line">		<span class='keyword'>struct</span> isl_vec *sample;</td></tr>
+<tr><td class="num" id="LN457">457</td><td class="line">		<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *point;</td></tr>
+<tr><td class="num" id="LN458">458</td><td class="line">		<span class='keyword'>for</span> (j = 0; j &lt; hull-&gt;n_eq; ++j) {</td></tr>
+<tr><td class="num" id="LN459">459</td><td class="line">			sample = outside_point(tab, hull-&gt;eq[j], 1);</td></tr>
+<tr><td class="num" id="LN460">460</td><td class="line">			<span class='keyword'>if</span> (!sample)</td></tr>
+<tr><td class="num" id="LN461">461</td><td class="line">				<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN462">462</td><td class="line">			<span class='keyword'>if</span> (sample-&gt;size &gt; 0)</td></tr>
+<tr><td class="num" id="LN463">463</td><td class="line">				<span class='keyword'>break</span>;</td></tr>
+<tr><td class="num" id="LN464">464</td><td class="line">			isl_vec_free(sample);</td></tr>
+<tr><td class="num" id="LN465">465</td><td class="line">			sample = outside_point(tab, hull-&gt;eq[j], 0);</td></tr>
+<tr><td class="num" id="LN466">466</td><td class="line">			<span class='keyword'>if</span> (!sample)</td></tr>
+<tr><td class="num" id="LN467">467</td><td class="line">				<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN468">468</td><td class="line">			<span class='keyword'>if</span> (sample-&gt;size &gt; 0)</td></tr>
+<tr><td class="num" id="LN469">469</td><td class="line">				<span class='keyword'>break</span>;</td></tr>
+<tr><td class="num" id="LN470">470</td><td class="line">			isl_vec_free(sample);</td></tr>
+<tr><td class="num" id="LN471">471</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN472">472</td><td class="line">			<span class='keyword'>if</span> (isl_tab_add_eq(tab, hull-&gt;eq[j]) &lt; 0)</td></tr>
+<tr><td class="num" id="LN473">473</td><td class="line">				<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN474">474</td><td class="line">		}</td></tr>
+<tr><td class="num" id="LN475">475</td><td class="line">		<span class='keyword'>if</span> (j == hull-&gt;n_eq)</td></tr>
+<tr><td class="num" id="LN476">476</td><td class="line">			<span class='keyword'>break</span>;</td></tr>
+<tr><td class="num" id="LN477">477</td><td class="line">		<span class='keyword'>if</span> (tab-&gt;samples &amp;&amp;</td></tr>
+<tr><td class="num" id="LN478">478</td><td class="line">		    isl_tab_add_sample(tab, isl_vec_copy(sample)) &lt; 0)</td></tr>
+<tr><td class="num" id="LN479">479</td><td class="line">			hull = isl_basic_set_free(hull);</td></tr>
+<tr><td class="num" id="LN480">480</td><td class="line">		<span class='keyword'>if</span> (bset)</td></tr>
+<tr><td class="num" id="LN481">481</td><td class="line">			hull = add_adjacent_points(hull, isl_vec_copy(sample),</td></tr>
+<tr><td class="num" id="LN482">482</td><td class="line">						    bset);</td></tr>
+<tr><td class="num" id="LN483">483</td><td class="line">		point = isl_basic_set_from_vec(sample);</td></tr>
+<tr><td class="num" id="LN484">484</td><td class="line">		hull = affine_hull(hull, point);</td></tr>
+<tr><td class="num" id="LN485">485</td><td class="line">		<span class='keyword'>if</span> (!hull)</td></tr>
+<tr><td class="num" id="LN486">486</td><td class="line">			<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN487">487</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN488">488</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN489">489</td><td class="line">	<span class='keyword'>return</span> hull;</td></tr>
+<tr><td class="num" id="LN490">490</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN491">491</td><td class="line">	isl_basic_set_free(hull);</td></tr>
+<tr><td class="num" id="LN492">492</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN493">493</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN494">494</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN495">495</td><td class="line"><span class='comment'>/* Drop all constraints in bmap that involve any of the dimensions</span></td></tr>
+<tr><td class="num" id="LN496">496</td><td class="line"> <span class='comment'>* first to first+n-1.</span></td></tr>
+<tr><td class="num" id="LN497">497</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN498">498</td><td class="line"><span class='keyword'>static</span> <span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_basic_map *isl_basic_map_drop_constraints_involving(</td></tr>
+<tr><td class="num" id="LN499">499</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_basic_map *bmap, <span class='keyword'>unsigned</span> first, <span class='keyword'>unsigned</span> n)</td></tr>
+<tr><td class="num" id="LN500">500</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN501">501</td><td class="line">	<span class='keyword'>int</span> i;</td></tr>
+<tr><td class="num" id="LN502">502</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN503">503</td><td class="line">	<span class='keyword'>if</span> (n == 0)</td></tr>
+<tr><td class="num" id="LN504">504</td><td class="line">		<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN505">505</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN506">506</td><td class="line">	bmap = isl_basic_map_cow(bmap);</td></tr>
+<tr><td class="num" id="LN507">507</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN508">508</td><td class="line">	<span class='keyword'>if</span> (!bmap)</td></tr>
+<tr><td class="num" id="LN509">509</td><td class="line">		<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN510">510</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN511">511</td><td class="line">	<span class='keyword'>for</span> (i = bmap-&gt;n_eq - 1; i &gt;= 0; --i) {</td></tr>
+<tr><td class="num" id="LN512">512</td><td class="line">		<span class='keyword'>if</span> (isl_seq_first_non_zero(bmap-&gt;eq[i] + 1 + first, n) == -1)</td></tr>
+<tr><td class="num" id="LN513">513</td><td class="line">			<span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN514">514</td><td class="line">		isl_basic_map_drop_equality(bmap, i);</td></tr>
+<tr><td class="num" id="LN515">515</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN516">516</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN517">517</td><td class="line">	<span class='keyword'>for</span> (i = bmap-&gt;n_ineq - 1; i &gt;= 0; --i) {</td></tr>
+<tr><td class="num" id="LN518">518</td><td class="line">		<span class='keyword'>if</span> (isl_seq_first_non_zero(bmap-&gt;ineq[i] + 1 + first, n) == -1)</td></tr>
+<tr><td class="num" id="LN519">519</td><td class="line">			<span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN520">520</td><td class="line">		isl_basic_map_drop_inequality(bmap, i);</td></tr>
+<tr><td class="num" id="LN521">521</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN522">522</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN523">523</td><td class="line">	bmap = isl_basic_map_add_known_div_constraints(bmap);</td></tr>
+<tr><td class="num" id="LN524">524</td><td class="line">	<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN525">525</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN526">526</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN527">527</td><td class="line"><span class='comment'>/* Drop all constraints in bset that involve any of the dimensions</span></td></tr>
+<tr><td class="num" id="LN528">528</td><td class="line"> <span class='comment'>* first to first+n-1.</span></td></tr>
+<tr><td class="num" id="LN529">529</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN530">530</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *isl_basic_set_drop_constraints_involving(</td></tr>
+<tr><td class="num" id="LN531">531</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset, <span class='keyword'>unsigned</span> first, <span class='keyword'>unsigned</span> n)</td></tr>
+<tr><td class="num" id="LN532">532</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN533">533</td><td class="line">	<span class='keyword'>return</span> isl_basic_map_drop_constraints_involving(bset, first, n);</td></tr>
+<tr><td class="num" id="LN534">534</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN535">535</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN536">536</td><td class="line"><span class='comment'>/* Drop all constraints in bmap that do not involve any of the dimensions</span></td></tr>
+<tr><td class="num" id="LN537">537</td><td class="line"> <span class='comment'>* first to first + n - 1 of the given type.</span></td></tr>
+<tr><td class="num" id="LN538">538</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN539">539</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_basic_map *isl_basic_map_drop_constraints_not_involving_dims(</td></tr>
+<tr><td class="num" id="LN540">540</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_basic_map *bmap,</td></tr>
+<tr><td class="num" id="LN541">541</td><td class="line">	<span class='keyword'>enum</span> isl_dim_type type, <span class='keyword'>unsigned</span> first, <span class='keyword'>unsigned</span> n)</td></tr>
+<tr><td class="num" id="LN542">542</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN543">543</td><td class="line">	<span class='keyword'>int</span> i;</td></tr>
+<tr><td class="num" id="LN544">544</td><td class="line">	<span class='keyword'>unsigned</span> dim;</td></tr>
+<tr><td class="num" id="LN545">545</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN546">546</td><td class="line">	<span class='keyword'>if</span> (n == 0) {</td></tr>
+<tr><td class="num" id="LN547">547</td><td class="line">		isl_space *space = isl_basic_map_get_space(bmap);</td></tr>
+<tr><td class="num" id="LN548">548</td><td class="line">		isl_basic_map_free(bmap);</td></tr>
+<tr><td class="num" id="LN549">549</td><td class="line">		<span class='keyword'>return</span> isl_basic_map_universe(space);</td></tr>
+<tr><td class="num" id="LN550">550</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN551">551</td><td class="line">	bmap = isl_basic_map_cow(bmap);</td></tr>
+<tr><td class="num" id="LN552">552</td><td class="line">	<span class='keyword'>if</span> (!bmap)</td></tr>
+<tr><td class="num" id="LN553">553</td><td class="line">		<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN554">554</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN555">555</td><td class="line">	dim = isl_basic_map_dim(bmap, type);</td></tr>
+<tr><td class="num" id="LN556">556</td><td class="line">	<span class='keyword'>if</span> (first + n &gt; dim || first + n &lt; first)</td></tr>
+<tr><td class="num" id="LN557">557</td><td class="line">		<span class='macro'>isl_die(isl_basic_map_get_ctx(bmap), isl_error_invalid,<span class='expansion'>do { isl_handle_error(isl_basic_map_get_ctx(bmap), isl_error_invalid<br>, "index out of bounds", "/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_affine_hull.c"<br>, 558); return isl_basic_map_free(bmap); } while (0)</span></span></td></tr>
+<tr><td class="num" id="LN558">558</td><td class="line">			<span class='string_literal'><span class='macro'>"index out of bounds"</span>, <span class='keyword'>return</span> isl_basic_map_free(bmap))<span class='expansion'>do { isl_handle_error(isl_basic_map_get_ctx(bmap), isl_error_invalid<br>, "index out of bounds", "/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_affine_hull.c"<br>, 558); return isl_basic_map_free(bmap); } while (0)</span></span>;</td></tr>
+<tr><td class="num" id="LN559">559</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN560">560</td><td class="line">	first += isl_basic_map_offset(bmap, type) - 1;</td></tr>
+<tr><td class="num" id="LN561">561</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN562">562</td><td class="line">	<span class='keyword'>for</span> (i = bmap-&gt;n_eq - 1; i &gt;= 0; --i) {</td></tr>
+<tr><td class="num" id="LN563">563</td><td class="line">		<span class='keyword'>if</span> (isl_seq_first_non_zero(bmap-&gt;eq[i] + 1 + first, n) != -1)</td></tr>
+<tr><td class="num" id="LN564">564</td><td class="line">			<span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN565">565</td><td class="line">		isl_basic_map_drop_equality(bmap, i);</td></tr>
+<tr><td class="num" id="LN566">566</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN567">567</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN568">568</td><td class="line">	<span class='keyword'>for</span> (i = bmap-&gt;n_ineq - 1; i &gt;= 0; --i) {</td></tr>
+<tr><td class="num" id="LN569">569</td><td class="line">		<span class='keyword'>if</span> (isl_seq_first_non_zero(bmap-&gt;ineq[i] + 1 + first, n) != -1)</td></tr>
+<tr><td class="num" id="LN570">570</td><td class="line">			<span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN571">571</td><td class="line">		isl_basic_map_drop_inequality(bmap, i);</td></tr>
+<tr><td class="num" id="LN572">572</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN573">573</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN574">574</td><td class="line">	bmap = isl_basic_map_add_known_div_constraints(bmap);</td></tr>
+<tr><td class="num" id="LN575">575</td><td class="line">	<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN576">576</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN577">577</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN578">578</td><td class="line"><span class='comment'>/* Drop all constraints in bset that do not involve any of the dimensions</span></td></tr>
+<tr><td class="num" id="LN579">579</td><td class="line"> <span class='comment'>* first to first + n - 1 of the given type.</span></td></tr>
+<tr><td class="num" id="LN580">580</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN581">581</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *isl_basic_set_drop_constraints_not_involving_dims(</td></tr>
+<tr><td class="num" id="LN582">582</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset,</td></tr>
+<tr><td class="num" id="LN583">583</td><td class="line">	<span class='keyword'>enum</span> isl_dim_type type, <span class='keyword'>unsigned</span> first, <span class='keyword'>unsigned</span> n)</td></tr>
+<tr><td class="num" id="LN584">584</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN585">585</td><td class="line">	<span class='keyword'>return</span> isl_basic_map_drop_constraints_not_involving_dims(bset,</td></tr>
+<tr><td class="num" id="LN586">586</td><td class="line">							    type, first, n);</td></tr>
+<tr><td class="num" id="LN587">587</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN588">588</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN589">589</td><td class="line"><span class='comment'>/* Drop all constraints in bmap that involve any of the dimensions</span></td></tr>
+<tr><td class="num" id="LN590">590</td><td class="line"> <span class='comment'>* first to first + n - 1 of the given type.</span></td></tr>
+<tr><td class="num" id="LN591">591</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN592">592</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_basic_map *isl_basic_map_drop_constraints_involving_dims(</td></tr>
+<tr><td class="num" id="LN593">593</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_basic_map *bmap,</td></tr>
+<tr><td class="num" id="LN594">594</td><td class="line">	<span class='keyword'>enum</span> isl_dim_type type, <span class='keyword'>unsigned</span> first, <span class='keyword'>unsigned</span> n)</td></tr>
+<tr><td class="num" id="LN595">595</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN596">596</td><td class="line">	<span class='keyword'>unsigned</span> dim;</td></tr>
+<tr><td class="num" id="LN597">597</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN598">598</td><td class="line">	<span class='keyword'>if</span> (!bmap)</td></tr>
+<tr><td class="num" id="LN599">599</td><td class="line">		<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN600">600</td><td class="line">	<span class='keyword'>if</span> (n == 0)</td></tr>
+<tr><td class="num" id="LN601">601</td><td class="line">		<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN602">602</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN603">603</td><td class="line">	dim = isl_basic_map_dim(bmap, type);</td></tr>
+<tr><td class="num" id="LN604">604</td><td class="line">	<span class='keyword'>if</span> (first + n &gt; dim || first + n &lt; first)</td></tr>
+<tr><td class="num" id="LN605">605</td><td class="line">		<span class='macro'>isl_die(isl_basic_map_get_ctx(bmap), isl_error_invalid,<span class='expansion'>do { isl_handle_error(isl_basic_map_get_ctx(bmap), isl_error_invalid<br>, "index out of bounds", "/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_affine_hull.c"<br>, 606); return isl_basic_map_free(bmap); } while (0)</span></span></td></tr>
+<tr><td class="num" id="LN606">606</td><td class="line">			<span class='string_literal'><span class='macro'>"index out of bounds"</span>, <span class='keyword'>return</span> isl_basic_map_free(bmap))<span class='expansion'>do { isl_handle_error(isl_basic_map_get_ctx(bmap), isl_error_invalid<br>, "index out of bounds", "/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_affine_hull.c"<br>, 606); return isl_basic_map_free(bmap); } while (0)</span></span>;</td></tr>
+<tr><td class="num" id="LN607">607</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN608">608</td><td class="line">	bmap = isl_basic_map_remove_divs_involving_dims(bmap, type, first, n);</td></tr>
+<tr><td class="num" id="LN609">609</td><td class="line">	first += isl_basic_map_offset(bmap, type) - 1;</td></tr>
+<tr><td class="num" id="LN610">610</td><td class="line">	<span class='keyword'>return</span> isl_basic_map_drop_constraints_involving(bmap, first, n);</td></tr>
+<tr><td class="num" id="LN611">611</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN612">612</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN613">613</td><td class="line"><span class='comment'>/* Drop all constraints in bset that involve any of the dimensions</span></td></tr>
+<tr><td class="num" id="LN614">614</td><td class="line"> <span class='comment'>* first to first + n - 1 of the given type.</span></td></tr>
+<tr><td class="num" id="LN615">615</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN616">616</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *isl_basic_set_drop_constraints_involving_dims(</td></tr>
+<tr><td class="num" id="LN617">617</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset,</td></tr>
+<tr><td class="num" id="LN618">618</td><td class="line">	<span class='keyword'>enum</span> isl_dim_type type, <span class='keyword'>unsigned</span> first, <span class='keyword'>unsigned</span> n)</td></tr>
+<tr><td class="num" id="LN619">619</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN620">620</td><td class="line">	<span class='keyword'>return</span> isl_basic_map_drop_constraints_involving_dims(bset,</td></tr>
+<tr><td class="num" id="LN621">621</td><td class="line">							    type, first, n);</td></tr>
+<tr><td class="num" id="LN622">622</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN623">623</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN624">624</td><td class="line"><span class='comment'>/* Drop constraints from "map" by applying "drop" to each basic map.</span></td></tr>
+<tr><td class="num" id="LN625">625</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN626">626</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_map *drop_constraints(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_map *map,</td></tr>
+<tr><td class="num" id="LN627">627</td><td class="line">	<span class='keyword'>enum</span> isl_dim_type type, <span class='keyword'>unsigned</span> first, <span class='keyword'>unsigned</span> n,</td></tr>
+<tr><td class="num" id="LN628">628</td><td class="line">	<span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_basic_map *(*drop)(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_basic_map *bmap,</td></tr>
+<tr><td class="num" id="LN629">629</td><td class="line">		<span class='keyword'>enum</span> isl_dim_type type, <span class='keyword'>unsigned</span> first, <span class='keyword'>unsigned</span> n))</td></tr>
+<tr><td class="num" id="LN630">630</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN631">631</td><td class="line">	<span class='keyword'>int</span> i;</td></tr>
+<tr><td class="num" id="LN632">632</td><td class="line">	<span class='keyword'>unsigned</span> dim;</td></tr>
+<tr><td class="num" id="LN633">633</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN634">634</td><td class="line">	<span class='keyword'>if</span> (!map)</td></tr>
+<tr><td class="num" id="LN635">635</td><td class="line">		<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN636">636</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN637">637</td><td class="line">	dim = isl_map_dim(map, type);</td></tr>
+<tr><td class="num" id="LN638">638</td><td class="line">	<span class='keyword'>if</span> (first + n &gt; dim || first + n &lt; first)</td></tr>
+<tr><td class="num" id="LN639">639</td><td class="line">		<span class='macro'>isl_die(isl_map_get_ctx(map), isl_error_invalid,<span class='expansion'>do { isl_handle_error(isl_map_get_ctx(map), isl_error_invalid<br>, "index out of bounds", "/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_affine_hull.c"<br>, 640); return isl_map_free(map); } while (0)</span></span></td></tr>
+<tr><td class="num" id="LN640">640</td><td class="line">			<span class='string_literal'><span class='macro'>"index out of bounds"</span>, <span class='keyword'>return</span> isl_map_free(map))<span class='expansion'>do { isl_handle_error(isl_map_get_ctx(map), isl_error_invalid<br>, "index out of bounds", "/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_affine_hull.c"<br>, 640); return isl_map_free(map); } while (0)</span></span>;</td></tr>
+<tr><td class="num" id="LN641">641</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN642">642</td><td class="line">	map = isl_map_cow(map);</td></tr>
+<tr><td class="num" id="LN643">643</td><td class="line">	<span class='keyword'>if</span> (!map)</td></tr>
+<tr><td class="num" id="LN644">644</td><td class="line">		<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN645">645</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN646">646</td><td class="line">	<span class='keyword'>for</span> (i = 0; i &lt; map-&gt;n; ++i) {</td></tr>
+<tr><td class="num" id="LN647">647</td><td class="line">		map-&gt;p[i] = drop(map-&gt;p[i], type, first, n);</td></tr>
+<tr><td class="num" id="LN648">648</td><td class="line">		<span class='keyword'>if</span> (!map-&gt;p[i])</td></tr>
+<tr><td class="num" id="LN649">649</td><td class="line">			<span class='keyword'>return</span> isl_map_free(map);</td></tr>
+<tr><td class="num" id="LN650">650</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN651">651</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN652">652</td><td class="line">	<span class='keyword'>if</span> (map-&gt;n &gt; 1)</td></tr>
+<tr><td class="num" id="LN653">653</td><td class="line">		<span class='macro'>ISL_F_CLR(map, ISL_MAP_DISJOINT)<span class='expansion'>(((map)-&gt;flags) &amp;= ~((1 &lt;&lt; 0)))</span></span>;</td></tr>
+<tr><td class="num" id="LN654">654</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN655">655</td><td class="line">	<span class='keyword'>return</span> map;</td></tr>
+<tr><td class="num" id="LN656">656</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN657">657</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN658">658</td><td class="line"><span class='comment'>/* Drop all constraints in map that involve any of the dimensions</span></td></tr>
+<tr><td class="num" id="LN659">659</td><td class="line"> <span class='comment'>* first to first + n - 1 of the given type.</span></td></tr>
+<tr><td class="num" id="LN660">660</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN661">661</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_map *isl_map_drop_constraints_involving_dims(</td></tr>
+<tr><td class="num" id="LN662">662</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_map *map,</td></tr>
+<tr><td class="num" id="LN663">663</td><td class="line">	<span class='keyword'>enum</span> isl_dim_type type, <span class='keyword'>unsigned</span> first, <span class='keyword'>unsigned</span> n)</td></tr>
+<tr><td class="num" id="LN664">664</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN665">665</td><td class="line">	<span class='keyword'>if</span> (n == 0)</td></tr>
+<tr><td class="num" id="LN666">666</td><td class="line">		<span class='keyword'>return</span> map;</td></tr>
+<tr><td class="num" id="LN667">667</td><td class="line">	<span class='keyword'>return</span> drop_constraints(map, type, first, n,</td></tr>
+<tr><td class="num" id="LN668">668</td><td class="line">				&amp;isl_basic_map_drop_constraints_involving_dims);</td></tr>
+<tr><td class="num" id="LN669">669</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN670">670</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN671">671</td><td class="line"><span class='comment'>/* Drop all constraints in "map" that do not involve any of the dimensions</span></td></tr>
+<tr><td class="num" id="LN672">672</td><td class="line"> <span class='comment'>* first to first + n - 1 of the given type.</span></td></tr>
+<tr><td class="num" id="LN673">673</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN674">674</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_map *isl_map_drop_constraints_not_involving_dims(</td></tr>
+<tr><td class="num" id="LN675">675</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_map *map,</td></tr>
+<tr><td class="num" id="LN676">676</td><td class="line">	<span class='keyword'>enum</span> isl_dim_type type, <span class='keyword'>unsigned</span> first, <span class='keyword'>unsigned</span> n)</td></tr>
+<tr><td class="num" id="LN677">677</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN678">678</td><td class="line">	<span class='keyword'>if</span> (n == 0) {</td></tr>
+<tr><td class="num" id="LN679">679</td><td class="line">		isl_space *space = isl_map_get_space(map);</td></tr>
+<tr><td class="num" id="LN680">680</td><td class="line">		isl_map_free(map);</td></tr>
+<tr><td class="num" id="LN681">681</td><td class="line">		<span class='keyword'>return</span> isl_map_universe(space);</td></tr>
+<tr><td class="num" id="LN682">682</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN683">683</td><td class="line">	<span class='keyword'>return</span> drop_constraints(map, type, first, n,</td></tr>
+<tr><td class="num" id="LN684">684</td><td class="line">			    &amp;isl_basic_map_drop_constraints_not_involving_dims);</td></tr>
+<tr><td class="num" id="LN685">685</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN686">686</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN687">687</td><td class="line"><span class='comment'>/* Drop all constraints in set that involve any of the dimensions</span></td></tr>
+<tr><td class="num" id="LN688">688</td><td class="line"> <span class='comment'>* first to first + n - 1 of the given type.</span></td></tr>
+<tr><td class="num" id="LN689">689</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN690">690</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> <span class='macro'>isl_set<span class='expansion'>isl_map</span></span> *isl_set_drop_constraints_involving_dims(</td></tr>
+<tr><td class="num" id="LN691">691</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> <span class='macro'>isl_set<span class='expansion'>isl_map</span></span> *set,</td></tr>
+<tr><td class="num" id="LN692">692</td><td class="line">	<span class='keyword'>enum</span> isl_dim_type type, <span class='keyword'>unsigned</span> first, <span class='keyword'>unsigned</span> n)</td></tr>
+<tr><td class="num" id="LN693">693</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN694">694</td><td class="line">	<span class='keyword'>return</span> isl_map_drop_constraints_involving_dims(set, type, first, n);</td></tr>
+<tr><td class="num" id="LN695">695</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN696">696</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN697">697</td><td class="line"><span class='comment'>/* Drop all constraints in "set" that do not involve any of the dimensions</span></td></tr>
+<tr><td class="num" id="LN698">698</td><td class="line"> <span class='comment'>* first to first + n - 1 of the given type.</span></td></tr>
+<tr><td class="num" id="LN699">699</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN700">700</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> <span class='macro'>isl_set<span class='expansion'>isl_map</span></span> *isl_set_drop_constraints_not_involving_dims(</td></tr>
+<tr><td class="num" id="LN701">701</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> <span class='macro'>isl_set<span class='expansion'>isl_map</span></span> *set,</td></tr>
+<tr><td class="num" id="LN702">702</td><td class="line">	<span class='keyword'>enum</span> isl_dim_type type, <span class='keyword'>unsigned</span> first, <span class='keyword'>unsigned</span> n)</td></tr>
+<tr><td class="num" id="LN703">703</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN704">704</td><td class="line">	<span class='keyword'>return</span> isl_map_drop_constraints_not_involving_dims(set, type, first, n);</td></tr>
+<tr><td class="num" id="LN705">705</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN706">706</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN707">707</td><td class="line"><span class='comment'>/* Construct an initial underapproximation of the hull of "bset"</span></td></tr>
+<tr><td class="num" id="LN708">708</td><td class="line"> <span class='comment'>* from "sample" and any of its adjacent points that also belong to "bset".</span></td></tr>
+<tr><td class="num" id="LN709">709</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN710">710</td><td class="line"><span class='keyword'>static</span> <span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *initialize_hull(__isl_keep <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset,</td></tr>
+<tr><td class="num" id="LN711">711</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_vec *sample)</td></tr>
+<tr><td class="num" id="LN712">712</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN713">713</td><td class="line">	<span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *hull;</td></tr>
+<tr><td class="num" id="LN714">714</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN715">715</td><td class="line">	hull = isl_basic_set_from_vec(isl_vec_copy(sample));</td></tr>
+<tr><td class="num" id="LN716">716</td><td class="line">	hull = add_adjacent_points(hull, sample, bset);</td></tr>
+<tr><td class="num" id="LN717">717</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN718">718</td><td class="line">	<span class='keyword'>return</span> hull;</td></tr>
+<tr><td class="num" id="LN719">719</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN720">720</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN721">721</td><td class="line"><span class='comment'>/* Look for all equalities satisfied by the integer points in bset,</span></td></tr>
+<tr><td class="num" id="LN722">722</td><td class="line"> <span class='comment'>* which is assumed to be bounded.</span></td></tr>
+<tr><td class="num" id="LN723">723</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN724">724</td><td class="line"> <span class='comment'>* The equalities are obtained by successively looking for</span></td></tr>
+<tr><td class="num" id="LN725">725</td><td class="line"> <span class='comment'>* a point that is affinely independent of the points found so far.</span></td></tr>
+<tr><td class="num" id="LN726">726</td><td class="line"> <span class='comment'>* In particular, for each equality satisfied by the points so far,</span></td></tr>
+<tr><td class="num" id="LN727">727</td><td class="line"> <span class='comment'>* we check if there is any point on a hyperplane parallel to the</span></td></tr>
+<tr><td class="num" id="LN728">728</td><td class="line"> <span class='comment'>* corresponding hyperplane shifted by at least one (in either direction).</span></td></tr>
+<tr><td class="num" id="LN729">729</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN730">730</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *uset_affine_hull_bounded(<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset)</td></tr>
+<tr><td class="num" id="LN731">731</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN732">732</td><td class="line">	<span class='keyword'>struct</span> isl_vec *sample = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN733">733</td><td class="line">	<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *hull;</td></tr>
+<tr><td class="num" id="LN734">734</td><td class="line">	<span class='keyword'>struct</span> isl_tab *tab = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN735">735</td><td class="line">	<span class='keyword'>unsigned</span> dim;</td></tr>
+<tr><td class="num" id="LN736">736</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN737">737</td><td class="line">	<span class='keyword'>if</span> (isl_basic_set_plain_is_empty(bset))</td></tr>
+<tr><td class="num" id="LN738">738</td><td class="line">		<span class='keyword'>return</span> bset;</td></tr>
+<tr><td class="num" id="LN739">739</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN740">740</td><td class="line">	dim = isl_basic_set_n_dim(bset);</td></tr>
+<tr><td class="num" id="LN741">741</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN742">742</td><td class="line">	<span class='keyword'>if</span> (bset-&gt;sample &amp;&amp; bset-&gt;sample-&gt;size == 1 + dim) {</td></tr>
+<tr><td class="num" id="LN743">743</td><td class="line">		<span class='keyword'>int</span> contains = isl_basic_set_contains(bset, bset-&gt;sample);</td></tr>
+<tr><td class="num" id="LN744">744</td><td class="line">		<span class='keyword'>if</span> (contains &lt; 0)</td></tr>
+<tr><td class="num" id="LN745">745</td><td class="line">			<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN746">746</td><td class="line">		<span class='keyword'>if</span> (contains) {</td></tr>
+<tr><td class="num" id="LN747">747</td><td class="line">			<span class='keyword'>if</span> (dim == 0)</td></tr>
+<tr><td class="num" id="LN748">748</td><td class="line">				<span class='keyword'>return</span> bset;</td></tr>
+<tr><td class="num" id="LN749">749</td><td class="line">			sample = isl_vec_copy(bset-&gt;sample);</td></tr>
+<tr><td class="num" id="LN750">750</td><td class="line">		} <span class='keyword'>else</span> {</td></tr>
+<tr><td class="num" id="LN751">751</td><td class="line">			isl_vec_free(bset-&gt;sample);</td></tr>
+<tr><td class="num" id="LN752">752</td><td class="line">			bset-&gt;sample = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN753">753</td><td class="line">		}</td></tr>
+<tr><td class="num" id="LN754">754</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN755">755</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN756">756</td><td class="line">	tab = isl_tab_from_basic_set(bset, 1);</td></tr>
+<tr><td class="num" id="LN757">757</td><td class="line">	<span class='keyword'>if</span> (!tab)</td></tr>
+<tr><td class="num" id="LN758">758</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN759">759</td><td class="line">	<span class='keyword'>if</span> (tab-&gt;empty) {</td></tr>
+<tr><td class="num" id="LN760">760</td><td class="line">		isl_tab_free(tab);</td></tr>
+<tr><td class="num" id="LN761">761</td><td class="line">		isl_vec_free(sample);</td></tr>
+<tr><td class="num" id="LN762">762</td><td class="line">		<span class='keyword'>return</span> isl_basic_set_set_to_empty(bset);</td></tr>
+<tr><td class="num" id="LN763">763</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN764">764</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN765">765</td><td class="line">	<span class='keyword'>if</span> (!sample) {</td></tr>
+<tr><td class="num" id="LN766">766</td><td class="line">		<span class='keyword'>struct</span> isl_tab_undo *snap;</td></tr>
+<tr><td class="num" id="LN767">767</td><td class="line">		snap = isl_tab_snap(tab);</td></tr>
+<tr><td class="num" id="LN768">768</td><td class="line">		sample = isl_tab_sample(tab);</td></tr>
+<tr><td class="num" id="LN769">769</td><td class="line">		<span class='keyword'>if</span> (isl_tab_rollback(tab, snap) &lt; 0)</td></tr>
+<tr><td class="num" id="LN770">770</td><td class="line">			<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN771">771</td><td class="line">		isl_vec_free(tab-&gt;bmap-&gt;sample);</td></tr>
+<tr><td class="num" id="LN772">772</td><td class="line">		tab-&gt;bmap-&gt;sample = isl_vec_copy(sample);</td></tr>
+<tr><td class="num" id="LN773">773</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN774">774</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN775">775</td><td class="line">	<span class='keyword'>if</span> (!sample)</td></tr>
+<tr><td class="num" id="LN776">776</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN777">777</td><td class="line">	<span class='keyword'>if</span> (sample-&gt;size == 0) {</td></tr>
+<tr><td class="num" id="LN778">778</td><td class="line">		isl_tab_free(tab);</td></tr>
+<tr><td class="num" id="LN779">779</td><td class="line">		isl_vec_free(sample);</td></tr>
+<tr><td class="num" id="LN780">780</td><td class="line">		<span class='keyword'>return</span> isl_basic_set_set_to_empty(bset);</td></tr>
+<tr><td class="num" id="LN781">781</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN782">782</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN783">783</td><td class="line">	hull = initialize_hull(bset, sample);</td></tr>
+<tr><td class="num" id="LN784">784</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN785">785</td><td class="line">	hull = extend_affine_hull(tab, hull, bset);</td></tr>
+<tr><td class="num" id="LN786">786</td><td class="line">	isl_basic_set_free(bset);</td></tr>
+<tr><td class="num" id="LN787">787</td><td class="line">	isl_tab_free(tab);</td></tr>
+<tr><td class="num" id="LN788">788</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN789">789</td><td class="line">	<span class='keyword'>return</span> hull;</td></tr>
+<tr><td class="num" id="LN790">790</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN791">791</td><td class="line">	isl_vec_free(sample);</td></tr>
+<tr><td class="num" id="LN792">792</td><td class="line">	isl_tab_free(tab);</td></tr>
+<tr><td class="num" id="LN793">793</td><td class="line">	isl_basic_set_free(bset);</td></tr>
+<tr><td class="num" id="LN794">794</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN795">795</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN796">796</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN797">797</td><td class="line"><span class='comment'>/* Given an unbounded tableau and an integer point satisfying the tableau,</span></td></tr>
+<tr><td class="num" id="LN798">798</td><td class="line"> <span class='comment'>* construct an initial affine hull containing the recession cone</span></td></tr>
+<tr><td class="num" id="LN799">799</td><td class="line"> <span class='comment'>* shifted to the given point.</span></td></tr>
+<tr><td class="num" id="LN800">800</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN801">801</td><td class="line"> <span class='comment'>* The unbounded directions are taken from the last rows of the basis,</span></td></tr>
+<tr><td class="num" id="LN802">802</td><td class="line"> <span class='comment'>* which is assumed to have been initialized appropriately.</span></td></tr>
+<tr><td class="num" id="LN803">803</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN804">804</td><td class="line"><span class='keyword'>static</span> <span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *initial_hull(<span class='keyword'>struct</span> isl_tab *tab,</td></tr>
+<tr><td class="num" id="LN805">805</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_vec *vec)</td></tr>
+<tr><td class="num" id="LN806">806</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN807">807</td><td class="line">	<span class='keyword'>int</span> i;</td></tr>
+<tr><td class="num" id="LN808">808</td><td class="line">	<span class='keyword'>int</span> k;</td></tr>
+<tr><td class="num" id="LN809">809</td><td class="line">	<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN810">810</td><td class="line">	<span class='keyword'>struct</span> isl_ctx *ctx;</td></tr>
+<tr><td class="num" id="LN811">811</td><td class="line">	<span class='keyword'>unsigned</span> dim;</td></tr>
+<tr><td class="num" id="LN812">812</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN813">813</td><td class="line">	<span class='keyword'>if</span> (!vec || !tab)</td></tr>
+<tr><td class="num" id="LN814">814</td><td class="line">		<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN815">815</td><td class="line">	ctx = vec-&gt;ctx;</td></tr>
+<tr><td class="num" id="LN816">816</td><td class="line">	<span class='macro'>isl_assert(ctx, vec-&gt;size != 0, <span class='keyword'>goto</span> error)<span class='expansion'>do { if (vec-&gt;size != 0) break; do { isl_handle_error(ctx,<br> isl_error_unknown, "Assertion \"" "vec-&gt;size != 0" "\" failed"<br>, "/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_affine_hull.c"<br>, 816); goto error; } while (0); } while (0)</span></span>;</td></tr>
+<tr><td class="num" id="LN817">817</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN818">818</td><td class="line">	bset = isl_basic_set_alloc(ctx, 0, vec-&gt;size - 1, 0, vec-&gt;size - 1, 0);</td></tr>
+<tr><td class="num" id="LN819">819</td><td class="line">	<span class='keyword'>if</span> (!bset)</td></tr>
+<tr><td class="num" id="LN820">820</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN821">821</td><td class="line">	dim = isl_basic_set_n_dim(bset) - tab-&gt;n_unbounded;</td></tr>
+<tr><td class="num" id="LN822">822</td><td class="line">	<span class='keyword'>for</span> (i = 0; i &lt; dim; ++i) {</td></tr>
+<tr><td class="num" id="LN823">823</td><td class="line">		k = isl_basic_set_alloc_equality(bset);</td></tr>
+<tr><td class="num" id="LN824">824</td><td class="line">		<span class='keyword'>if</span> (k &lt; 0)</td></tr>
+<tr><td class="num" id="LN825">825</td><td class="line">			<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN826">826</td><td class="line">		isl_seq_cpy(bset-&gt;eq[k] + 1, tab-&gt;basis-&gt;row[1 + i] + 1,</td></tr>
+<tr><td class="num" id="LN827">827</td><td class="line">			    vec-&gt;size - 1);</td></tr>
+<tr><td class="num" id="LN828">828</td><td class="line">		isl_seq_inner_product(bset-&gt;eq[k] + 1, vec-&gt;el +1,</td></tr>
+<tr><td class="num" id="LN829">829</td><td class="line">				      vec-&gt;size - 1, &amp;bset-&gt;eq[k][0]);</td></tr>
+<tr><td class="num" id="LN830">830</td><td class="line">		<span class='macro'>isl_int_neg(bset-&gt;eq[k][0], bset-&gt;eq[k][0])<span class='expansion'>isl_sioimath_neg((bset-&gt;eq[k][0]), *(bset-&gt;eq[k][0]))</span></span>;</td></tr>
+<tr><td class="num" id="LN831">831</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN832">832</td><td class="line">	bset-&gt;sample = vec;</td></tr>
+<tr><td class="num" id="LN833">833</td><td class="line">	bset = isl_basic_set_gauss(bset, <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>);</td></tr>
+<tr><td class="num" id="LN834">834</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN835">835</td><td class="line">	<span class='keyword'>return</span> bset;</td></tr>
+<tr><td class="num" id="LN836">836</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN837">837</td><td class="line">	isl_basic_set_free(bset);</td></tr>
+<tr><td class="num" id="LN838">838</td><td class="line">	isl_vec_free(vec);</td></tr>
+<tr><td class="num" id="LN839">839</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN840">840</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN841">841</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN842">842</td><td class="line"><span class='comment'>/* Given a tableau of a set and a tableau of the corresponding</span></td></tr>
+<tr><td class="num" id="LN843">843</td><td class="line"> <span class='comment'>* recession cone, detect and add all equalities to the tableau.</span></td></tr>
+<tr><td class="num" id="LN844">844</td><td class="line"> <span class='comment'>* If the tableau is bounded, then we can simply keep the</span></td></tr>
+<tr><td class="num" id="LN845">845</td><td class="line"> <span class='comment'>* tableau in its state after the return from extend_affine_hull.</span></td></tr>
+<tr><td class="num" id="LN846">846</td><td class="line"> <span class='comment'>* However, if the tableau is unbounded, then</span></td></tr>
+<tr><td class="num" id="LN847">847</td><td class="line"> <span class='comment'>* isl_tab_set_initial_basis_with_cone will add some additional</span></td></tr>
+<tr><td class="num" id="LN848">848</td><td class="line"> <span class='comment'>* constraints to the tableau that have to be removed again.</span></td></tr>
+<tr><td class="num" id="LN849">849</td><td class="line"> <span class='comment'>* In this case, we therefore rollback to the state before</span></td></tr>
+<tr><td class="num" id="LN850">850</td><td class="line"> <span class='comment'>* any constraints were added and then add the equalities back in.</span></td></tr>
+<tr><td class="num" id="LN851">851</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN852">852</td><td class="line"><span class='keyword'>struct</span> isl_tab *isl_tab_detect_equalities(<span class='keyword'>struct</span> isl_tab *tab,</td></tr>
+<tr><td class="num" id="LN853">853</td><td class="line">	<span class='keyword'>struct</span> isl_tab *tab_cone)</td></tr>
+<tr><td class="num" id="LN854">854</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN855">855</td><td class="line">	<span class='keyword'>int</span> j;</td></tr>
+<tr><td class="num" id="LN856">856</td><td class="line">	<span class='keyword'>struct</span> isl_vec *sample;</td></tr>
+<tr><td class="num" id="LN857">857</td><td class="line">	<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *hull = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN858">858</td><td class="line">	<span class='keyword'>struct</span> isl_tab_undo *snap;</td></tr>
+<tr><td class="num" id="LN859">859</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN860">860</td><td class="line">	<span class='keyword'>if</span> (!tab || !tab_cone)</td></tr>
+<tr><td class="num" id="LN861">861</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN862">862</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN863">863</td><td class="line">	snap = isl_tab_snap(tab);</td></tr>
+<tr><td class="num" id="LN864">864</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN865">865</td><td class="line">	isl_mat_free(tab-&gt;basis);</td></tr>
+<tr><td class="num" id="LN866">866</td><td class="line">	tab-&gt;basis = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN867">867</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN868">868</td><td class="line">	<span class='macro'>isl_assert(tab-&gt;mat-&gt;ctx, tab-&gt;bmap, <span class='keyword'>goto</span> error)<span class='expansion'>do { if (tab-&gt;bmap) break; do { isl_handle_error(tab-&gt;mat<br>-&gt;ctx, isl_error_unknown, "Assertion \"" "tab-&gt;bmap" "\" failed"<br>, "/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_affine_hull.c"<br>, 868); goto error; } while (0); } while (0)</span></span>;</td></tr>
+<tr><td class="num" id="LN869">869</td><td class="line">	<span class='macro'>isl_assert(tab-&gt;mat-&gt;ctx, tab-&gt;samples, <span class='keyword'>goto</span> error)<span class='expansion'>do { if (tab-&gt;samples) break; do { isl_handle_error(tab-&gt;<br>mat-&gt;ctx, isl_error_unknown, "Assertion \"" "tab-&gt;samples"<br> "\" failed", "/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_affine_hull.c"<br>, 869); goto error; } while (0); } while (0)</span></span>;</td></tr>
+<tr><td class="num" id="LN870">870</td><td class="line">	<span class='macro'>isl_assert(tab-&gt;mat-&gt;ctx, tab-&gt;samples-&gt;n_col == 1 + tab-&gt;n_var, <span class='keyword'>goto</span> error)<span class='expansion'>do { if (tab-&gt;samples-&gt;n_col == 1 + tab-&gt;n_var) break<br>; do { isl_handle_error(tab-&gt;mat-&gt;ctx, isl_error_unknown<br>, "Assertion \"" "tab-&gt;samples-&gt;n_col == 1 + tab-&gt;n_var"<br> "\" failed", "/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_affine_hull.c"<br>, 870); goto error; } while (0); } while (0)</span></span>;</td></tr>
+<tr><td class="num" id="LN871">871</td><td class="line">	<span class='macro'>isl_assert(tab-&gt;mat-&gt;ctx, tab-&gt;n_sample &gt; tab-&gt;n_outside, <span class='keyword'>goto</span> error)<span class='expansion'>do { if (tab-&gt;n_sample &gt; tab-&gt;n_outside) break; do {<br> isl_handle_error(tab-&gt;mat-&gt;ctx, isl_error_unknown, "Assertion \""<br> "tab-&gt;n_sample &gt; tab-&gt;n_outside" "\" failed", "/cluster/home/tgrosser/polly/llvm_git/tools/polly/lib/External/isl/isl_affine_hull.c"<br>, 871); goto error; } while (0); } while (0)</span></span>;</td></tr>
+<tr><td class="num" id="LN872">872</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN873">873</td><td class="line">	<span class='keyword'>if</span> (isl_tab_set_initial_basis_with_cone(tab, tab_cone) &lt; 0)</td></tr>
+<tr><td class="num" id="LN874">874</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN875">875</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN876">876</td><td class="line">	sample = isl_vec_alloc(tab-&gt;mat-&gt;ctx, 1 + tab-&gt;n_var);</td></tr>
+<tr><td class="num" id="LN877">877</td><td class="line">	<span class='keyword'>if</span> (!sample)</td></tr>
+<tr><td class="num" id="LN878">878</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN879">879</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN880">880</td><td class="line">	isl_seq_cpy(sample-&gt;el, tab-&gt;samples-&gt;row[tab-&gt;n_outside], sample-&gt;size);</td></tr>
+<tr><td class="num" id="LN881">881</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN882">882</td><td class="line">	isl_vec_free(tab-&gt;bmap-&gt;sample);</td></tr>
+<tr><td class="num" id="LN883">883</td><td class="line">	tab-&gt;bmap-&gt;sample = isl_vec_copy(sample);</td></tr>
+<tr><td class="num" id="LN884">884</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN885">885</td><td class="line">	<span class='keyword'>if</span> (tab-&gt;n_unbounded == 0)</td></tr>
+<tr><td class="num" id="LN886">886</td><td class="line">		hull = isl_basic_set_from_vec(isl_vec_copy(sample));</td></tr>
+<tr><td class="num" id="LN887">887</td><td class="line">	<span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN888">888</td><td class="line">		hull = initial_hull(tab, isl_vec_copy(sample));</td></tr>
+<tr><td class="num" id="LN889">889</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN890">890</td><td class="line">	<span class='keyword'>for</span> (j = tab-&gt;n_outside + 1; j &lt; tab-&gt;n_sample; ++j) {</td></tr>
+<tr><td class="num" id="LN891">891</td><td class="line">		isl_seq_cpy(sample-&gt;el, tab-&gt;samples-&gt;row[j], sample-&gt;size);</td></tr>
+<tr><td class="num" id="LN892">892</td><td class="line">		hull = affine_hull(hull,</td></tr>
+<tr><td class="num" id="LN893">893</td><td class="line">				isl_basic_set_from_vec(isl_vec_copy(sample)));</td></tr>
+<tr><td class="num" id="LN894">894</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN895">895</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN896">896</td><td class="line">	isl_vec_free(sample);</td></tr>
+<tr><td class="num" id="LN897">897</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN898">898</td><td class="line">	hull = extend_affine_hull(tab, hull, <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>);</td></tr>
+<tr><td class="num" id="LN899">899</td><td class="line">	<span class='keyword'>if</span> (!hull)</td></tr>
+<tr><td class="num" id="LN900">900</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN901">901</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN902">902</td><td class="line">	<span class='keyword'>if</span> (tab-&gt;n_unbounded == 0) {</td></tr>
+<tr><td class="num" id="LN903">903</td><td class="line">		isl_basic_set_free(hull);</td></tr>
+<tr><td class="num" id="LN904">904</td><td class="line">		<span class='keyword'>return</span> tab;</td></tr>
+<tr><td class="num" id="LN905">905</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN906">906</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN907">907</td><td class="line">	<span class='keyword'>if</span> (isl_tab_rollback(tab, snap) &lt; 0)</td></tr>
+<tr><td class="num" id="LN908">908</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN909">909</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN910">910</td><td class="line">	<span class='keyword'>if</span> (hull-&gt;n_eq &gt; tab-&gt;n_zero) {</td></tr>
+<tr><td class="num" id="LN911">911</td><td class="line">		<span class='keyword'>for</span> (j = 0; j &lt; hull-&gt;n_eq; ++j) {</td></tr>
+<tr><td class="num" id="LN912">912</td><td class="line">			isl_seq_normalize(tab-&gt;mat-&gt;ctx, hull-&gt;eq[j], 1 + tab-&gt;n_var);</td></tr>
+<tr><td class="num" id="LN913">913</td><td class="line">			<span class='keyword'>if</span> (isl_tab_add_eq(tab, hull-&gt;eq[j]) &lt; 0)</td></tr>
+<tr><td class="num" id="LN914">914</td><td class="line">				<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN915">915</td><td class="line">		}</td></tr>
+<tr><td class="num" id="LN916">916</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN917">917</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN918">918</td><td class="line">	isl_basic_set_free(hull);</td></tr>
+<tr><td class="num" id="LN919">919</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN920">920</td><td class="line">	<span class='keyword'>return</span> tab;</td></tr>
+<tr><td class="num" id="LN921">921</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN922">922</td><td class="line">	isl_basic_set_free(hull);</td></tr>
+<tr><td class="num" id="LN923">923</td><td class="line">	isl_tab_free(tab);</td></tr>
+<tr><td class="num" id="LN924">924</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN925">925</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN926">926</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN927">927</td><td class="line"><span class='comment'>/* Compute the affine hull of "bset", where "cone" is the recession cone</span></td></tr>
+<tr><td class="num" id="LN928">928</td><td class="line"> <span class='comment'>* of "bset".</span></td></tr>
+<tr><td class="num" id="LN929">929</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN930">930</td><td class="line"> <span class='comment'>* We first compute a unimodular transformation that puts the unbounded</span></td></tr>
+<tr><td class="num" id="LN931">931</td><td class="line"> <span class='comment'>* directions in the last dimensions.  In particular, we take a transformation</span></td></tr>
+<tr><td class="num" id="LN932">932</td><td class="line"> <span class='comment'>* that maps all equalities to equalities (in HNF) on the first dimensions.</span></td></tr>
+<tr><td class="num" id="LN933">933</td><td class="line"> <span class='comment'>* Let x be the original dimensions and y the transformed, with y_1 bounded</span></td></tr>
+<tr><td class="num" id="LN934">934</td><td class="line"> <span class='comment'>* and y_2 unbounded.</span></td></tr>
+<tr><td class="num" id="LN935">935</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN936">936</td><td class="line"> <span class='comment'>*	       [ y_1 ]			[ y_1 ]   [ Q_1 ]</span></td></tr>
+<tr><td class="num" id="LN937">937</td><td class="line"> <span class='comment'>*	x = U  [ y_2 ]			[ y_2 ] = [ Q_2 ] x</span></td></tr>
+<tr><td class="num" id="LN938">938</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN939">939</td><td class="line"> <span class='comment'>* Let's call the input basic set S.  We compute S' = preimage(S, U)</span></td></tr>
+<tr><td class="num" id="LN940">940</td><td class="line"> <span class='comment'>* and drop the final dimensions including any constraints involving them.</span></td></tr>
+<tr><td class="num" id="LN941">941</td><td class="line"> <span class='comment'>* This results in set S''.</span></td></tr>
+<tr><td class="num" id="LN942">942</td><td class="line"> <span class='comment'>* Then we compute the affine hull A'' of S''.</span></td></tr>
+<tr><td class="num" id="LN943">943</td><td class="line"> <span class='comment'>* Let F y_1 &gt;= g be the constraint system of A''.  In the transformed</span></td></tr>
+<tr><td class="num" id="LN944">944</td><td class="line"> <span class='comment'>* space the y_2 are unbounded, so we can add them back without any constraints,</span></td></tr>
+<tr><td class="num" id="LN945">945</td><td class="line"> <span class='comment'>* resulting in</span></td></tr>
+<tr><td class="num" id="LN946">946</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN947">947</td><td class="line"> <span class='comment'>*		        [ y_1 ]</span></td></tr>
+<tr><td class="num" id="LN948">948</td><td class="line"> <span class='comment'>*		[ F 0 ] [ y_2 ] &gt;= g</span></td></tr>
+<tr><td class="num" id="LN949">949</td><td class="line"> <span class='comment'>* or</span></td></tr>
+<tr><td class="num" id="LN950">950</td><td class="line"> <span class='comment'>*		        [ Q_1 ]</span></td></tr>
+<tr><td class="num" id="LN951">951</td><td class="line"> <span class='comment'>*		[ F 0 ] [ Q_2 ] x &gt;= g</span></td></tr>
+<tr><td class="num" id="LN952">952</td><td class="line"> <span class='comment'>* or</span></td></tr>
+<tr><td class="num" id="LN953">953</td><td class="line"> <span class='comment'>*		F Q_1 x &gt;= g</span></td></tr>
+<tr><td class="num" id="LN954">954</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN955">955</td><td class="line"> <span class='comment'>* The affine hull in the original space is then obtained as</span></td></tr>
+<tr><td class="num" id="LN956">956</td><td class="line"> <span class='comment'>* A = preimage(A'', Q_1).</span></td></tr>
+<tr><td class="num" id="LN957">957</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN958">958</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *affine_hull_with_cone(<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset,</td></tr>
+<tr><td class="num" id="LN959">959</td><td class="line">	<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *cone)</td></tr>
+<tr><td class="num" id="LN960">960</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN961">961</td><td class="line">	<span class='keyword'>unsigned</span> total;</td></tr>
+<tr><td class="num" id="LN962">962</td><td class="line">	<span class='keyword'>unsigned</span> cone_dim;</td></tr>
+<tr><td class="num" id="LN963">963</td><td class="line">	<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *hull;</td></tr>
+<tr><td class="num" id="LN964">964</td><td class="line">	<span class='keyword'>struct</span> isl_mat *M, *U, *Q;</td></tr>
+<tr><td class="num" id="LN965">965</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN966">966</td><td class="line">	<span class='keyword'>if</span> (<span class="mrange">!bset</span> || !cone)</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path1" class="msg msgEvent" style="margin-left:13ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexEvent">1</div></td><td>Assuming 'bset' is null</td><td><div class="PathNav"><a href="#Path2" title="Next event (2)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN967">967</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num"></td><td class="line"><div id="Path2" class="msg msgControl" style="margin-left:17ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexControl">2</div></td><td><div class="PathNav"><a href="#Path1" title="Previous event (1)">&#x2190;</a></div></td></td><td>Control jumps to line 1015</td><td><div class="PathNav"><a href="#EndPath" title="Next event (3)">&#x2192;</a></div></td></tr></table></div></td></tr>
+<tr><td class="num" id="LN968">968</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN969">969</td><td class="line">	total = isl_basic_set_total_dim(cone);</td></tr>
+<tr><td class="num" id="LN970">970</td><td class="line">	cone_dim = total - cone-&gt;n_eq;</td></tr>
+<tr><td class="num" id="LN971">971</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN972">972</td><td class="line">	M = isl_mat_sub_alloc6(bset-&gt;ctx, cone-&gt;eq, 0, cone-&gt;n_eq, 1, total);</td></tr>
+<tr><td class="num" id="LN973">973</td><td class="line">	M = isl_mat_left_hermite(M, 0, &amp;U, &amp;Q);</td></tr>
+<tr><td class="num" id="LN974">974</td><td class="line">	<span class='keyword'>if</span> (!M)</td></tr>
+<tr><td class="num" id="LN975">975</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN976">976</td><td class="line">	isl_mat_free(M);</td></tr>
+<tr><td class="num" id="LN977">977</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN978">978</td><td class="line">	U = isl_mat_lin_to_aff(U);</td></tr>
+<tr><td class="num" id="LN979">979</td><td class="line">	bset = isl_basic_set_preimage(bset, isl_mat_copy(U));</td></tr>
+<tr><td class="num" id="LN980">980</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN981">981</td><td class="line">	bset = isl_basic_set_drop_constraints_involving(bset, total - cone_dim,</td></tr>
+<tr><td class="num" id="LN982">982</td><td class="line">							cone_dim);</td></tr>
+<tr><td class="num" id="LN983">983</td><td class="line">	bset = isl_basic_set_drop_dims(bset, total - cone_dim, cone_dim);</td></tr>
+<tr><td class="num" id="LN984">984</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN985">985</td><td class="line">	Q = isl_mat_lin_to_aff(Q);</td></tr>
+<tr><td class="num" id="LN986">986</td><td class="line">	Q = isl_mat_drop_rows(Q, 1 + total - cone_dim, cone_dim);</td></tr>
+<tr><td class="num" id="LN987">987</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN988">988</td><td class="line">	<span class='keyword'>if</span> (bset &amp;&amp; bset-&gt;sample &amp;&amp; bset-&gt;sample-&gt;size == 1 + total)</td></tr>
+<tr><td class="num" id="LN989">989</td><td class="line">		bset-&gt;sample = isl_mat_vec_product(isl_mat_copy(Q), bset-&gt;sample);</td></tr>
+<tr><td class="num" id="LN990">990</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN991">991</td><td class="line">	hull = uset_affine_hull_bounded(bset);</td></tr>
+<tr><td class="num" id="LN992">992</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN993">993</td><td class="line">	<span class='keyword'>if</span> (!hull) {</td></tr>
+<tr><td class="num" id="LN994">994</td><td class="line">		isl_mat_free(Q);</td></tr>
+<tr><td class="num" id="LN995">995</td><td class="line">		isl_mat_free(U);</td></tr>
+<tr><td class="num" id="LN996">996</td><td class="line">	} <span class='keyword'>else</span> {</td></tr>
+<tr><td class="num" id="LN997">997</td><td class="line">		<span class='keyword'>struct</span> isl_vec *sample = isl_vec_copy(hull-&gt;sample);</td></tr>
+<tr><td class="num" id="LN998">998</td><td class="line">		U = isl_mat_drop_cols(U, 1 + total - cone_dim, cone_dim);</td></tr>
+<tr><td class="num" id="LN999">999</td><td class="line">		<span class='keyword'>if</span> (sample &amp;&amp; sample-&gt;size &gt; 0)</td></tr>
+<tr><td class="num" id="LN1000">1000</td><td class="line">			sample = isl_mat_vec_product(U, sample);</td></tr>
+<tr><td class="num" id="LN1001">1001</td><td class="line">		<span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN1002">1002</td><td class="line">			isl_mat_free(U);</td></tr>
+<tr><td class="num" id="LN1003">1003</td><td class="line">		hull = isl_basic_set_preimage(hull, Q);</td></tr>
+<tr><td class="num" id="LN1004">1004</td><td class="line">		<span class='keyword'>if</span> (hull) {</td></tr>
+<tr><td class="num" id="LN1005">1005</td><td class="line">			isl_vec_free(hull-&gt;sample);</td></tr>
+<tr><td class="num" id="LN1006">1006</td><td class="line">			hull-&gt;sample = sample;</td></tr>
+<tr><td class="num" id="LN1007">1007</td><td class="line">		} <span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN1008">1008</td><td class="line">			isl_vec_free(sample);</td></tr>
+<tr><td class="num" id="LN1009">1009</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN1010">1010</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1011">1011</td><td class="line">	isl_basic_set_free(cone);</td></tr>
+<tr><td class="num" id="LN1012">1012</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1013">1013</td><td class="line">	<span class='keyword'>return</span> hull;</td></tr>
+<tr><td class="num" id="LN1014">1014</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN1015">1015</td><td class="line">	isl_basic_set_free(bset);</td></tr>
+<tr><td class="num" id="LN1016">1016</td><td class="line">	isl_basic_set_free(<span class="mrange">cone</span>);</td></tr>
+<tr><td class="num"></td><td class="line"><div id="EndPath" class="msg msgEvent" style="margin-left:9ex"><table class="msgT"><tr><td valign="top"><div class="PathIndex PathIndexEvent">3</div></td><td><div class="PathNav"><a href="#Path2" title="Previous event (2)">&#x2190;</a></div></td></td><td>Incorrect decrement of the reference count of an object that is not owned at this point by the caller</td></tr></table></div></td></tr>
+<tr><td class="num" id="LN1017">1017</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1018">1018</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1019">1019</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1020">1020</td><td class="line"><span class='comment'>/* Look for all equalities satisfied by the integer points in bset,</span></td></tr>
+<tr><td class="num" id="LN1021">1021</td><td class="line"> <span class='comment'>* which is assumed not to have any explicit equalities.</span></td></tr>
+<tr><td class="num" id="LN1022">1022</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1023">1023</td><td class="line"> <span class='comment'>* The equalities are obtained by successively looking for</span></td></tr>
+<tr><td class="num" id="LN1024">1024</td><td class="line"> <span class='comment'>* a point that is affinely independent of the points found so far.</span></td></tr>
+<tr><td class="num" id="LN1025">1025</td><td class="line"> <span class='comment'>* In particular, for each equality satisfied by the points so far,</span></td></tr>
+<tr><td class="num" id="LN1026">1026</td><td class="line"> <span class='comment'>* we check if there is any point on a hyperplane parallel to the</span></td></tr>
+<tr><td class="num" id="LN1027">1027</td><td class="line"> <span class='comment'>* corresponding hyperplane shifted by at least one (in either direction).</span></td></tr>
+<tr><td class="num" id="LN1028">1028</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1029">1029</td><td class="line"> <span class='comment'>* Before looking for any outside points, we first compute the recession</span></td></tr>
+<tr><td class="num" id="LN1030">1030</td><td class="line"> <span class='comment'>* cone.  The directions of this recession cone will always be part</span></td></tr>
+<tr><td class="num" id="LN1031">1031</td><td class="line"> <span class='comment'>* of the affine hull, so there is no need for looking for any points</span></td></tr>
+<tr><td class="num" id="LN1032">1032</td><td class="line"> <span class='comment'>* in these directions.</span></td></tr>
+<tr><td class="num" id="LN1033">1033</td><td class="line"> <span class='comment'>* In particular, if the recession cone is full-dimensional, then</span></td></tr>
+<tr><td class="num" id="LN1034">1034</td><td class="line"> <span class='comment'>* the affine hull is simply the whole universe.</span></td></tr>
+<tr><td class="num" id="LN1035">1035</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN1036">1036</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *uset_affine_hull(<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset)</td></tr>
+<tr><td class="num" id="LN1037">1037</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN1038">1038</td><td class="line">	<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *cone;</td></tr>
+<tr><td class="num" id="LN1039">1039</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1040">1040</td><td class="line">	<span class='keyword'>if</span> (isl_basic_set_plain_is_empty(bset))</td></tr>
+<tr><td class="num" id="LN1041">1041</td><td class="line">		<span class='keyword'>return</span> bset;</td></tr>
+<tr><td class="num" id="LN1042">1042</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1043">1043</td><td class="line">	cone = isl_basic_set_recession_cone(isl_basic_set_copy(bset));</td></tr>
+<tr><td class="num" id="LN1044">1044</td><td class="line">	<span class='keyword'>if</span> (!cone)</td></tr>
+<tr><td class="num" id="LN1045">1045</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN1046">1046</td><td class="line">	<span class='keyword'>if</span> (cone-&gt;n_eq == 0) {</td></tr>
+<tr><td class="num" id="LN1047">1047</td><td class="line">		isl_space *space;</td></tr>
+<tr><td class="num" id="LN1048">1048</td><td class="line">		space = isl_basic_set_get_space(bset);</td></tr>
+<tr><td class="num" id="LN1049">1049</td><td class="line">		isl_basic_set_free(cone);</td></tr>
+<tr><td class="num" id="LN1050">1050</td><td class="line">		isl_basic_set_free(bset);</td></tr>
+<tr><td class="num" id="LN1051">1051</td><td class="line">		<span class='keyword'>return</span> isl_basic_set_universe(space);</td></tr>
+<tr><td class="num" id="LN1052">1052</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN1053">1053</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1054">1054</td><td class="line">	<span class='keyword'>if</span> (cone-&gt;n_eq &lt; isl_basic_set_total_dim(cone))</td></tr>
+<tr><td class="num" id="LN1055">1055</td><td class="line">		<span class='keyword'>return</span> affine_hull_with_cone(bset, cone);</td></tr>
+<tr><td class="num" id="LN1056">1056</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1057">1057</td><td class="line">	isl_basic_set_free(cone);</td></tr>
+<tr><td class="num" id="LN1058">1058</td><td class="line">	<span class='keyword'>return</span> uset_affine_hull_bounded(bset);</td></tr>
+<tr><td class="num" id="LN1059">1059</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN1060">1060</td><td class="line">	isl_basic_set_free(bset);</td></tr>
+<tr><td class="num" id="LN1061">1061</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1062">1062</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1063">1063</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1064">1064</td><td class="line"><span class='comment'>/* Look for all equalities satisfied by the integer points in bmap</span></td></tr>
+<tr><td class="num" id="LN1065">1065</td><td class="line"> <span class='comment'>* that are independent of the equalities already explicitly available</span></td></tr>
+<tr><td class="num" id="LN1066">1066</td><td class="line"> <span class='comment'>* in bmap.</span></td></tr>
+<tr><td class="num" id="LN1067">1067</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1068">1068</td><td class="line"> <span class='comment'>* We first remove all equalities already explicitly available,</span></td></tr>
+<tr><td class="num" id="LN1069">1069</td><td class="line"> <span class='comment'>* then look for additional equalities in the reduced space</span></td></tr>
+<tr><td class="num" id="LN1070">1070</td><td class="line"> <span class='comment'>* and then transform the result to the original space.</span></td></tr>
+<tr><td class="num" id="LN1071">1071</td><td class="line"> <span class='comment'>* The original equalities are _not_ added to this set.  This is</span></td></tr>
+<tr><td class="num" id="LN1072">1072</td><td class="line"> <span class='comment'>* the responsibility of the calling function.</span></td></tr>
+<tr><td class="num" id="LN1073">1073</td><td class="line"> <span class='comment'>* The resulting basic set has all meaning about the dimensions removed.</span></td></tr>
+<tr><td class="num" id="LN1074">1074</td><td class="line"> <span class='comment'>* In particular, dimensions that correspond to existential variables</span></td></tr>
+<tr><td class="num" id="LN1075">1075</td><td class="line"> <span class='comment'>* in bmap and that are found to be fixed are not removed.</span></td></tr>
+<tr><td class="num" id="LN1076">1076</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN1077">1077</td><td class="line"><span class='keyword'>static</span> <span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *equalities_in_underlying_set(</td></tr>
+<tr><td class="num" id="LN1078">1078</td><td class="line">						<span class='keyword'>struct</span> isl_basic_map *bmap)</td></tr>
+<tr><td class="num" id="LN1079">1079</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN1080">1080</td><td class="line">	<span class='keyword'>struct</span> isl_mat *T1 = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1081">1081</td><td class="line">	<span class='keyword'>struct</span> isl_mat *T2 = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1082">1082</td><td class="line">	<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1083">1083</td><td class="line">	<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *hull = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1084">1084</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1085">1085</td><td class="line">	bset = isl_basic_map_underlying_set(bmap);</td></tr>
+<tr><td class="num" id="LN1086">1086</td><td class="line">	<span class='keyword'>if</span> (!bset)</td></tr>
+<tr><td class="num" id="LN1087">1087</td><td class="line">		<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1088">1088</td><td class="line">	<span class='keyword'>if</span> (bset-&gt;n_eq)</td></tr>
+<tr><td class="num" id="LN1089">1089</td><td class="line">		bset = isl_basic_set_remove_equalities(bset, &amp;T1, &amp;T2);</td></tr>
+<tr><td class="num" id="LN1090">1090</td><td class="line">	<span class='keyword'>if</span> (!bset)</td></tr>
+<tr><td class="num" id="LN1091">1091</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN1092">1092</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1093">1093</td><td class="line">	hull = uset_affine_hull(bset);</td></tr>
+<tr><td class="num" id="LN1094">1094</td><td class="line">	<span class='keyword'>if</span> (!T2)</td></tr>
+<tr><td class="num" id="LN1095">1095</td><td class="line">		<span class='keyword'>return</span> hull;</td></tr>
+<tr><td class="num" id="LN1096">1096</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1097">1097</td><td class="line">	<span class='keyword'>if</span> (!hull) {</td></tr>
+<tr><td class="num" id="LN1098">1098</td><td class="line">		isl_mat_free(T1);</td></tr>
+<tr><td class="num" id="LN1099">1099</td><td class="line">		isl_mat_free(T2);</td></tr>
+<tr><td class="num" id="LN1100">1100</td><td class="line">	} <span class='keyword'>else</span> {</td></tr>
+<tr><td class="num" id="LN1101">1101</td><td class="line">		<span class='keyword'>struct</span> isl_vec *sample = isl_vec_copy(hull-&gt;sample);</td></tr>
+<tr><td class="num" id="LN1102">1102</td><td class="line">		<span class='keyword'>if</span> (sample &amp;&amp; sample-&gt;size &gt; 0)</td></tr>
+<tr><td class="num" id="LN1103">1103</td><td class="line">			sample = isl_mat_vec_product(T1, sample);</td></tr>
+<tr><td class="num" id="LN1104">1104</td><td class="line">		<span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN1105">1105</td><td class="line">			isl_mat_free(T1);</td></tr>
+<tr><td class="num" id="LN1106">1106</td><td class="line">		hull = isl_basic_set_preimage(hull, T2);</td></tr>
+<tr><td class="num" id="LN1107">1107</td><td class="line">		<span class='keyword'>if</span> (hull) {</td></tr>
+<tr><td class="num" id="LN1108">1108</td><td class="line">			isl_vec_free(hull-&gt;sample);</td></tr>
+<tr><td class="num" id="LN1109">1109</td><td class="line">			hull-&gt;sample = sample;</td></tr>
+<tr><td class="num" id="LN1110">1110</td><td class="line">		} <span class='keyword'>else</span></td></tr>
+<tr><td class="num" id="LN1111">1111</td><td class="line">			isl_vec_free(sample);</td></tr>
+<tr><td class="num" id="LN1112">1112</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN1113">1113</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1114">1114</td><td class="line">	<span class='keyword'>return</span> hull;</td></tr>
+<tr><td class="num" id="LN1115">1115</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN1116">1116</td><td class="line">	isl_mat_free(T1);</td></tr>
+<tr><td class="num" id="LN1117">1117</td><td class="line">	isl_mat_free(T2);</td></tr>
+<tr><td class="num" id="LN1118">1118</td><td class="line">	isl_basic_set_free(bset);</td></tr>
+<tr><td class="num" id="LN1119">1119</td><td class="line">	isl_basic_set_free(hull);</td></tr>
+<tr><td class="num" id="LN1120">1120</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1121">1121</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1122">1122</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1123">1123</td><td class="line"><span class='comment'>/* Detect and make explicit all equalities satisfied by the (integer)</span></td></tr>
+<tr><td class="num" id="LN1124">1124</td><td class="line"> <span class='comment'>* points in bmap.</span></td></tr>
+<tr><td class="num" id="LN1125">1125</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN1126">1126</td><td class="line"><span class='keyword'>struct</span> isl_basic_map *isl_basic_map_detect_equalities(</td></tr>
+<tr><td class="num" id="LN1127">1127</td><td class="line">						<span class='keyword'>struct</span> isl_basic_map *bmap)</td></tr>
+<tr><td class="num" id="LN1128">1128</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN1129">1129</td><td class="line">	<span class='keyword'>int</span> i, j;</td></tr>
+<tr><td class="num" id="LN1130">1130</td><td class="line">	<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *hull = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1131">1131</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1132">1132</td><td class="line">	<span class='keyword'>if</span> (!bmap)</td></tr>
+<tr><td class="num" id="LN1133">1133</td><td class="line">		<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1134">1134</td><td class="line">	<span class='keyword'>if</span> (bmap-&gt;n_ineq == 0)</td></tr>
+<tr><td class="num" id="LN1135">1135</td><td class="line">		<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN1136">1136</td><td class="line">	<span class='keyword'>if</span> (<span class='macro'>ISL_F_ISSET(bmap, ISL_BASIC_MAP_EMPTY)<span class='expansion'>(!!(((bmap)-&gt;flags) &amp; ((1 &lt;&lt; 1))))</span></span>)</td></tr>
+<tr><td class="num" id="LN1137">1137</td><td class="line">		<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN1138">1138</td><td class="line">	<span class='keyword'>if</span> (<span class='macro'>ISL_F_ISSET(bmap, ISL_BASIC_MAP_ALL_EQUALITIES)<span class='expansion'>(!!(((bmap)-&gt;flags) &amp; ((1 &lt;&lt; 7))))</span></span>)</td></tr>
+<tr><td class="num" id="LN1139">1139</td><td class="line">		<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN1140">1140</td><td class="line">	<span class='keyword'>if</span> (<span class='macro'>ISL_F_ISSET(bmap, ISL_BASIC_MAP_RATIONAL)<span class='expansion'>(!!(((bmap)-&gt;flags) &amp; ((1 &lt;&lt; 4))))</span></span>)</td></tr>
+<tr><td class="num" id="LN1141">1141</td><td class="line">		<span class='keyword'>return</span> isl_basic_map_implicit_equalities(bmap);</td></tr>
+<tr><td class="num" id="LN1142">1142</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1143">1143</td><td class="line">	hull = equalities_in_underlying_set(isl_basic_map_copy(bmap));</td></tr>
+<tr><td class="num" id="LN1144">1144</td><td class="line">	<span class='keyword'>if</span> (!hull)</td></tr>
+<tr><td class="num" id="LN1145">1145</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN1146">1146</td><td class="line">	<span class='keyword'>if</span> (<span class='macro'>ISL_F_ISSET(hull, ISL_BASIC_SET_EMPTY)<span class='expansion'>(!!(((hull)-&gt;flags) &amp; ((1 &lt;&lt; 1))))</span></span>) {</td></tr>
+<tr><td class="num" id="LN1147">1147</td><td class="line">		isl_basic_set_free(hull);</td></tr>
+<tr><td class="num" id="LN1148">1148</td><td class="line">		<span class='keyword'>return</span> isl_basic_map_set_to_empty(bmap);</td></tr>
+<tr><td class="num" id="LN1149">1149</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN1150">1150</td><td class="line">	bmap = isl_basic_map_extend_space(bmap, isl_space_copy(bmap-&gt;dim), 0,</td></tr>
+<tr><td class="num" id="LN1151">1151</td><td class="line">					hull-&gt;n_eq, 0);</td></tr>
+<tr><td class="num" id="LN1152">1152</td><td class="line">	<span class='keyword'>for</span> (i = 0; i &lt; hull-&gt;n_eq; ++i) {</td></tr>
+<tr><td class="num" id="LN1153">1153</td><td class="line">		j = isl_basic_map_alloc_equality(bmap);</td></tr>
+<tr><td class="num" id="LN1154">1154</td><td class="line">		<span class='keyword'>if</span> (j &lt; 0)</td></tr>
+<tr><td class="num" id="LN1155">1155</td><td class="line">			<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN1156">1156</td><td class="line">		isl_seq_cpy(bmap-&gt;eq[j], hull-&gt;eq[i],</td></tr>
+<tr><td class="num" id="LN1157">1157</td><td class="line">				1 + isl_basic_set_total_dim(hull));</td></tr>
+<tr><td class="num" id="LN1158">1158</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN1159">1159</td><td class="line">	isl_vec_free(bmap-&gt;sample);</td></tr>
+<tr><td class="num" id="LN1160">1160</td><td class="line">	bmap-&gt;sample = isl_vec_copy(hull-&gt;sample);</td></tr>
+<tr><td class="num" id="LN1161">1161</td><td class="line">	isl_basic_set_free(hull);</td></tr>
+<tr><td class="num" id="LN1162">1162</td><td class="line">	<span class='macro'>ISL_F_SET(bmap, ISL_BASIC_MAP_NO_IMPLICIT | ISL_BASIC_MAP_ALL_EQUALITIES)<span class='expansion'>(((bmap)-&gt;flags) |= ((1 &lt;&lt; 2) | (1 &lt;&lt; 7)))</span></span>;</td></tr>
+<tr><td class="num" id="LN1163">1163</td><td class="line">	bmap = isl_basic_map_simplify(bmap);</td></tr>
+<tr><td class="num" id="LN1164">1164</td><td class="line">	<span class='keyword'>return</span> isl_basic_map_finalize(bmap);</td></tr>
+<tr><td class="num" id="LN1165">1165</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN1166">1166</td><td class="line">	isl_basic_set_free(hull);</td></tr>
+<tr><td class="num" id="LN1167">1167</td><td class="line">	isl_basic_map_free(bmap);</td></tr>
+<tr><td class="num" id="LN1168">1168</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1169">1169</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1170">1170</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1171">1171</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *isl_basic_set_detect_equalities(</td></tr>
+<tr><td class="num" id="LN1172">1172</td><td class="line">						<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset)</td></tr>
+<tr><td class="num" id="LN1173">1173</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN1174">1174</td><td class="line">	<span class='keyword'>return</span> (<span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *)</td></tr>
+<tr><td class="num" id="LN1175">1175</td><td class="line">		isl_basic_map_detect_equalities((isl_basic_map *)bset);</td></tr>
+<tr><td class="num" id="LN1176">1176</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1177">1177</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1178">1178</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_map *isl_map_detect_equalities(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_map *map)</td></tr>
+<tr><td class="num" id="LN1179">1179</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN1180">1180</td><td class="line">	<span class='keyword'>return</span> isl_map_inline_foreach_basic_map(map,</td></tr>
+<tr><td class="num" id="LN1181">1181</td><td class="line">					    &amp;isl_basic_map_detect_equalities);</td></tr>
+<tr><td class="num" id="LN1182">1182</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1183">1183</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1184">1184</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> <span class='macro'>isl_set<span class='expansion'>isl_map</span></span> *isl_set_detect_equalities(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> <span class='macro'>isl_set<span class='expansion'>isl_map</span></span> *set)</td></tr>
+<tr><td class="num" id="LN1185">1185</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN1186">1186</td><td class="line">	<span class='keyword'>return</span> (<span class='macro'>isl_set<span class='expansion'>isl_map</span></span> *)isl_map_detect_equalities((isl_map *)set);</td></tr>
+<tr><td class="num" id="LN1187">1187</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1188">1188</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1189">1189</td><td class="line"><span class='comment'>/* Return the superset of "bmap" described by the equalities</span></td></tr>
+<tr><td class="num" id="LN1190">1190</td><td class="line"> <span class='comment'>* satisfied by "bmap" that are already known.</span></td></tr>
+<tr><td class="num" id="LN1191">1191</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN1192">1192</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_basic_map *isl_basic_map_plain_affine_hull(</td></tr>
+<tr><td class="num" id="LN1193">1193</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_basic_map *bmap)</td></tr>
+<tr><td class="num" id="LN1194">1194</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN1195">1195</td><td class="line">	bmap = isl_basic_map_cow(bmap);</td></tr>
+<tr><td class="num" id="LN1196">1196</td><td class="line">	<span class='keyword'>if</span> (bmap)</td></tr>
+<tr><td class="num" id="LN1197">1197</td><td class="line">		isl_basic_map_free_inequality(bmap, bmap-&gt;n_ineq);</td></tr>
+<tr><td class="num" id="LN1198">1198</td><td class="line">	bmap = isl_basic_map_finalize(bmap);</td></tr>
+<tr><td class="num" id="LN1199">1199</td><td class="line">	<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN1200">1200</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1201">1201</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1202">1202</td><td class="line"><span class='comment'>/* Return the superset of "bset" described by the equalities</span></td></tr>
+<tr><td class="num" id="LN1203">1203</td><td class="line"> <span class='comment'>* satisfied by "bset" that are already known.</span></td></tr>
+<tr><td class="num" id="LN1204">1204</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN1205">1205</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *isl_basic_set_plain_affine_hull(</td></tr>
+<tr><td class="num" id="LN1206">1206</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset)</td></tr>
+<tr><td class="num" id="LN1207">1207</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN1208">1208</td><td class="line">	<span class='keyword'>return</span> isl_basic_map_plain_affine_hull(bset);</td></tr>
+<tr><td class="num" id="LN1209">1209</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1210">1210</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1211">1211</td><td class="line"><span class='comment'>/* After computing the rational affine hull (by detecting the implicit</span></td></tr>
+<tr><td class="num" id="LN1212">1212</td><td class="line"> <span class='comment'>* equalities), we compute the additional equalities satisfied by</span></td></tr>
+<tr><td class="num" id="LN1213">1213</td><td class="line"> <span class='comment'>* the integer points (if any) and add the original equalities back in.</span></td></tr>
+<tr><td class="num" id="LN1214">1214</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN1215">1215</td><td class="line"><span class='keyword'>struct</span> isl_basic_map *isl_basic_map_affine_hull(<span class='keyword'>struct</span> isl_basic_map *bmap)</td></tr>
+<tr><td class="num" id="LN1216">1216</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN1217">1217</td><td class="line">	bmap = isl_basic_map_detect_equalities(bmap);</td></tr>
+<tr><td class="num" id="LN1218">1218</td><td class="line">	bmap = isl_basic_map_plain_affine_hull(bmap);</td></tr>
+<tr><td class="num" id="LN1219">1219</td><td class="line">	<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN1220">1220</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1221">1221</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1222">1222</td><td class="line"><span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *isl_basic_set_affine_hull(<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset)</td></tr>
+<tr><td class="num" id="LN1223">1223</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN1224">1224</td><td class="line">	<span class='keyword'>return</span> (<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *)</td></tr>
+<tr><td class="num" id="LN1225">1225</td><td class="line">		isl_basic_map_affine_hull((<span class='keyword'>struct</span> isl_basic_map *)bset);</td></tr>
+<tr><td class="num" id="LN1226">1226</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1227">1227</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1228">1228</td><td class="line"><span class='comment'>/* Given a rational affine matrix "M", add stride constraints to "bmap"</span></td></tr>
+<tr><td class="num" id="LN1229">1229</td><td class="line"> <span class='comment'>* that ensure that</span></td></tr>
+<tr><td class="num" id="LN1230">1230</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1231">1231</td><td class="line"> <span class='comment'>*		M(x)</span></td></tr>
+<tr><td class="num" id="LN1232">1232</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1233">1233</td><td class="line"> <span class='comment'>* is an integer vector.  The variables x include all the variables</span></td></tr>
+<tr><td class="num" id="LN1234">1234</td><td class="line"> <span class='comment'>* of "bmap" except the unknown divs.</span></td></tr>
+<tr><td class="num" id="LN1235">1235</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1236">1236</td><td class="line"> <span class='comment'>* If d is the common denominator of M, then we need to impose that</span></td></tr>
+<tr><td class="num" id="LN1237">1237</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1238">1238</td><td class="line"> <span class='comment'>*		d M(x) = 0 	mod d</span></td></tr>
+<tr><td class="num" id="LN1239">1239</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1240">1240</td><td class="line"> <span class='comment'>* or</span></td></tr>
+<tr><td class="num" id="LN1241">1241</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1242">1242</td><td class="line"> <span class='comment'>*		exists alpha : d M(x) = d alpha</span></td></tr>
+<tr><td class="num" id="LN1243">1243</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1244">1244</td><td class="line"> <span class='comment'>* This function is similar to add_strides in isl_morph.c</span></td></tr>
+<tr><td class="num" id="LN1245">1245</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN1246">1246</td><td class="line"><span class='keyword'>static</span> <span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_basic_map *add_strides(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_basic_map *bmap,</td></tr>
+<tr><td class="num" id="LN1247">1247</td><td class="line">	__isl_keep isl_mat *M, <span class='keyword'>int</span> n_known)</td></tr>
+<tr><td class="num" id="LN1248">1248</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN1249">1249</td><td class="line">	<span class='keyword'>int</span> i, div, k;</td></tr>
+<tr><td class="num" id="LN1250">1250</td><td class="line">	isl_int gcd;</td></tr>
+<tr><td class="num" id="LN1251">1251</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1252">1252</td><td class="line">	<span class='keyword'>if</span> (<span class='macro'>isl_int_is_one(M-&gt;row[0][0])<span class='expansion'>(isl_sioimath_cmp_si(*(M-&gt;row[0][0]), 1) == 0)</span></span>)</td></tr>
+<tr><td class="num" id="LN1253">1253</td><td class="line">		<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN1254">1254</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1255">1255</td><td class="line">	bmap = isl_basic_map_extend_space(bmap, isl_space_copy(bmap-&gt;dim),</td></tr>
+<tr><td class="num" id="LN1256">1256</td><td class="line">					M-&gt;n_row - 1, M-&gt;n_row - 1, 0);</td></tr>
+<tr><td class="num" id="LN1257">1257</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1258">1258</td><td class="line">	<span class='macro'>isl_int_init(gcd)<span class='expansion'>isl_sioimath_init((gcd))</span></span>;</td></tr>
+<tr><td class="num" id="LN1259">1259</td><td class="line">	<span class='keyword'>for</span> (i = 1; i &lt; M-&gt;n_row; ++i) {</td></tr>
+<tr><td class="num" id="LN1260">1260</td><td class="line">		isl_seq_gcd(M-&gt;row[i], M-&gt;n_col, &amp;gcd);</td></tr>
+<tr><td class="num" id="LN1261">1261</td><td class="line">		<span class='keyword'>if</span> (<span class='macro'>isl_int_is_divisible_by(gcd, M-&gt;row[0][0])<span class='expansion'>isl_sioimath_is_divisible_by(*(gcd), *(M-&gt;row[0][0]))</span></span>)</td></tr>
+<tr><td class="num" id="LN1262">1262</td><td class="line">			<span class='keyword'>continue</span>;</td></tr>
+<tr><td class="num" id="LN1263">1263</td><td class="line">		div = isl_basic_map_alloc_div(bmap);</td></tr>
+<tr><td class="num" id="LN1264">1264</td><td class="line">		<span class='keyword'>if</span> (div &lt; 0)</td></tr>
+<tr><td class="num" id="LN1265">1265</td><td class="line">			<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN1266">1266</td><td class="line">		<span class='macro'>isl_int_set_si(bmap-&gt;div[div][0], 0)<span class='expansion'>isl_sioimath_set_si((bmap-&gt;div[div][0]), 0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1267">1267</td><td class="line">		k = isl_basic_map_alloc_equality(bmap);</td></tr>
+<tr><td class="num" id="LN1268">1268</td><td class="line">		<span class='keyword'>if</span> (k &lt; 0)</td></tr>
+<tr><td class="num" id="LN1269">1269</td><td class="line">			<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN1270">1270</td><td class="line">		isl_seq_cpy(bmap-&gt;eq[k], M-&gt;row[i], M-&gt;n_col);</td></tr>
+<tr><td class="num" id="LN1271">1271</td><td class="line">		isl_seq_clr(bmap-&gt;eq[k] + M-&gt;n_col, bmap-&gt;n_div - n_known);</td></tr>
+<tr><td class="num" id="LN1272">1272</td><td class="line">		<span class='macro'>isl_int_set(bmap-&gt;eq[k][M-&gt;n_col - n_known + div],<span class='expansion'>isl_sioimath_set((bmap-&gt;eq[k][M-&gt;n_col - n_known + div]<br>), *(M-&gt;row[0][0]))</span></span></td></tr>
+<tr><td class="num" id="LN1273">1273</td><td class="line">			    <span class='macro'>M-&gt;row[0][0])<span class='expansion'>isl_sioimath_set((bmap-&gt;eq[k][M-&gt;n_col - n_known + div]<br>), *(M-&gt;row[0][0]))</span></span>;</td></tr>
+<tr><td class="num" id="LN1274">1274</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN1275">1275</td><td class="line">	<span class='macro'>isl_int_clear(gcd)<span class='expansion'>isl_sioimath_clear((gcd))</span></span>;</td></tr>
+<tr><td class="num" id="LN1276">1276</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1277">1277</td><td class="line">	<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN1278">1278</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN1279">1279</td><td class="line">	<span class='macro'>isl_int_clear(gcd)<span class='expansion'>isl_sioimath_clear((gcd))</span></span>;</td></tr>
+<tr><td class="num" id="LN1280">1280</td><td class="line">	isl_basic_map_free(bmap);</td></tr>
+<tr><td class="num" id="LN1281">1281</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1282">1282</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1283">1283</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1284">1284</td><td class="line"><span class='comment'>/* If there are any equalities that involve (multiple) unknown divs,</span></td></tr>
+<tr><td class="num" id="LN1285">1285</td><td class="line"> <span class='comment'>* then extract the stride information encoded by those equalities</span></td></tr>
+<tr><td class="num" id="LN1286">1286</td><td class="line"> <span class='comment'>* and make it explicitly available in "bmap".</span></td></tr>
+<tr><td class="num" id="LN1287">1287</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1288">1288</td><td class="line"> <span class='comment'>* We first sort the divs so that the unknown divs appear last and</span></td></tr>
+<tr><td class="num" id="LN1289">1289</td><td class="line"> <span class='comment'>* then we count how many equalities involve these divs.</span></td></tr>
+<tr><td class="num" id="LN1290">1290</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1291">1291</td><td class="line"> <span class='comment'>* Let these equalities be of the form</span></td></tr>
+<tr><td class="num" id="LN1292">1292</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1293">1293</td><td class="line"> <span class='comment'>*		A(x) + B y = 0</span></td></tr>
+<tr><td class="num" id="LN1294">1294</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1295">1295</td><td class="line"> <span class='comment'>* where y represents the unknown divs and x the remaining variables.</span></td></tr>
+<tr><td class="num" id="LN1296">1296</td><td class="line"> <span class='comment'>* Let [H 0] be the Hermite Normal Form of B, i.e.,</span></td></tr>
+<tr><td class="num" id="LN1297">1297</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1298">1298</td><td class="line"> <span class='comment'>*		B = [H 0] Q</span></td></tr>
+<tr><td class="num" id="LN1299">1299</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1300">1300</td><td class="line"> <span class='comment'>* Then x is a solution of the equalities iff</span></td></tr>
+<tr><td class="num" id="LN1301">1301</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1302">1302</td><td class="line"> <span class='comment'>*		H^-1 A(x) (= - [I 0] Q y)</span></td></tr>
+<tr><td class="num" id="LN1303">1303</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1304">1304</td><td class="line"> <span class='comment'>* is an integer vector.  Let d be the common denominator of H^-1.</span></td></tr>
+<tr><td class="num" id="LN1305">1305</td><td class="line"> <span class='comment'>* We impose</span></td></tr>
+<tr><td class="num" id="LN1306">1306</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1307">1307</td><td class="line"> <span class='comment'>*		d H^-1 A(x) = d alpha</span></td></tr>
+<tr><td class="num" id="LN1308">1308</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1309">1309</td><td class="line"> <span class='comment'>* in add_strides, with alpha fresh existentially quantified variables.</span></td></tr>
+<tr><td class="num" id="LN1310">1310</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN1311">1311</td><td class="line"><span class='keyword'>static</span> <span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_basic_map *isl_basic_map_make_strides_explicit(</td></tr>
+<tr><td class="num" id="LN1312">1312</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_basic_map *bmap)</td></tr>
+<tr><td class="num" id="LN1313">1313</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN1314">1314</td><td class="line">	<span class='keyword'>int</span> known;</td></tr>
+<tr><td class="num" id="LN1315">1315</td><td class="line">	<span class='keyword'>int</span> n_known;</td></tr>
+<tr><td class="num" id="LN1316">1316</td><td class="line">	<span class='keyword'>int</span> n, n_col;</td></tr>
+<tr><td class="num" id="LN1317">1317</td><td class="line">	<span class='keyword'>int</span> total;</td></tr>
+<tr><td class="num" id="LN1318">1318</td><td class="line">	isl_ctx *ctx;</td></tr>
+<tr><td class="num" id="LN1319">1319</td><td class="line">	isl_mat *A, *B, *M;</td></tr>
+<tr><td class="num" id="LN1320">1320</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1321">1321</td><td class="line">	known = isl_basic_map_divs_known(bmap);</td></tr>
+<tr><td class="num" id="LN1322">1322</td><td class="line">	<span class='keyword'>if</span> (known &lt; 0)</td></tr>
+<tr><td class="num" id="LN1323">1323</td><td class="line">		<span class='keyword'>return</span> isl_basic_map_free(bmap);</td></tr>
+<tr><td class="num" id="LN1324">1324</td><td class="line">	<span class='keyword'>if</span> (known)</td></tr>
+<tr><td class="num" id="LN1325">1325</td><td class="line">		<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN1326">1326</td><td class="line">	bmap = isl_basic_map_sort_divs(bmap);</td></tr>
+<tr><td class="num" id="LN1327">1327</td><td class="line">	bmap = isl_basic_map_gauss(bmap, <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>);</td></tr>
+<tr><td class="num" id="LN1328">1328</td><td class="line">	<span class='keyword'>if</span> (!bmap)</td></tr>
+<tr><td class="num" id="LN1329">1329</td><td class="line">		<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1330">1330</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1331">1331</td><td class="line">	<span class='keyword'>for</span> (n_known = 0; n_known &lt; bmap-&gt;n_div; ++n_known)</td></tr>
+<tr><td class="num" id="LN1332">1332</td><td class="line">		<span class='keyword'>if</span> (<span class='macro'>isl_int_is_zero(bmap-&gt;div[n_known][0])<span class='expansion'>(isl_sioimath_sgn(*(bmap-&gt;div[n_known][0])) == 0)</span></span>)</td></tr>
+<tr><td class="num" id="LN1333">1333</td><td class="line">			<span class='keyword'>break</span>;</td></tr>
+<tr><td class="num" id="LN1334">1334</td><td class="line">	ctx = isl_basic_map_get_ctx(bmap);</td></tr>
+<tr><td class="num" id="LN1335">1335</td><td class="line">	total = isl_space_dim(bmap-&gt;dim, isl_dim_all);</td></tr>
+<tr><td class="num" id="LN1336">1336</td><td class="line">	<span class='keyword'>for</span> (n = 0; n &lt; bmap-&gt;n_eq; ++n)</td></tr>
+<tr><td class="num" id="LN1337">1337</td><td class="line">		<span class='keyword'>if</span> (isl_seq_first_non_zero(bmap-&gt;eq[n] + 1 + total + n_known,</td></tr>
+<tr><td class="num" id="LN1338">1338</td><td class="line">					    bmap-&gt;n_div - n_known) == -1)</td></tr>
+<tr><td class="num" id="LN1339">1339</td><td class="line">			<span class='keyword'>break</span>;</td></tr>
+<tr><td class="num" id="LN1340">1340</td><td class="line">	<span class='keyword'>if</span> (n == 0)</td></tr>
+<tr><td class="num" id="LN1341">1341</td><td class="line">		<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN1342">1342</td><td class="line">	B = isl_mat_sub_alloc6(ctx, bmap-&gt;eq, 0, n, 0, 1 + total + n_known);</td></tr>
+<tr><td class="num" id="LN1343">1343</td><td class="line">	n_col = bmap-&gt;n_div - n_known;</td></tr>
+<tr><td class="num" id="LN1344">1344</td><td class="line">	A = isl_mat_sub_alloc6(ctx, bmap-&gt;eq, 0, n, 1 + total + n_known, n_col);</td></tr>
+<tr><td class="num" id="LN1345">1345</td><td class="line">	A = isl_mat_left_hermite(A, 0, <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>, <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>);</td></tr>
+<tr><td class="num" id="LN1346">1346</td><td class="line">	A = isl_mat_drop_cols(A, n, n_col - n);</td></tr>
+<tr><td class="num" id="LN1347">1347</td><td class="line">	A = isl_mat_lin_to_aff(A);</td></tr>
+<tr><td class="num" id="LN1348">1348</td><td class="line">	A = isl_mat_right_inverse(A);</td></tr>
+<tr><td class="num" id="LN1349">1349</td><td class="line">	B = isl_mat_insert_zero_rows(B, 0, 1);</td></tr>
+<tr><td class="num" id="LN1350">1350</td><td class="line">	B = isl_mat_set_element_si(B, 0, 0, 1);</td></tr>
+<tr><td class="num" id="LN1351">1351</td><td class="line">	M = isl_mat_product(A, B);</td></tr>
+<tr><td class="num" id="LN1352">1352</td><td class="line">	<span class='keyword'>if</span> (!M)</td></tr>
+<tr><td class="num" id="LN1353">1353</td><td class="line">		<span class='keyword'>return</span> isl_basic_map_free(bmap);</td></tr>
+<tr><td class="num" id="LN1354">1354</td><td class="line">	bmap = add_strides(bmap, M, n_known);</td></tr>
+<tr><td class="num" id="LN1355">1355</td><td class="line">	bmap = isl_basic_map_gauss(bmap, <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>);</td></tr>
+<tr><td class="num" id="LN1356">1356</td><td class="line">	isl_mat_free(M);</td></tr>
+<tr><td class="num" id="LN1357">1357</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1358">1358</td><td class="line">	<span class='keyword'>return</span> bmap;</td></tr>
+<tr><td class="num" id="LN1359">1359</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1360">1360</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1361">1361</td><td class="line"><span class='comment'>/* Compute the affine hull of each basic map in "map" separately</span></td></tr>
+<tr><td class="num" id="LN1362">1362</td><td class="line"> <span class='comment'>* and make all stride information explicit so that we can remove</span></td></tr>
+<tr><td class="num" id="LN1363">1363</td><td class="line"> <span class='comment'>* all unknown divs without losing this information.</span></td></tr>
+<tr><td class="num" id="LN1364">1364</td><td class="line"> <span class='comment'>* The result is also guaranteed to be gaussed.</span></td></tr>
+<tr><td class="num" id="LN1365">1365</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1366">1366</td><td class="line"> <span class='comment'>* In simple cases where a div is determined by an equality,</span></td></tr>
+<tr><td class="num" id="LN1367">1367</td><td class="line"> <span class='comment'>* calling isl_basic_map_gauss is enough to make the stride information</span></td></tr>
+<tr><td class="num" id="LN1368">1368</td><td class="line"> <span class='comment'>* explicit, as it will derive an explicit representation for the div</span></td></tr>
+<tr><td class="num" id="LN1369">1369</td><td class="line"> <span class='comment'>* from the equality.  If, however, the stride information</span></td></tr>
+<tr><td class="num" id="LN1370">1370</td><td class="line"> <span class='comment'>* is encoded through multiple unknown divs then we need to make</span></td></tr>
+<tr><td class="num" id="LN1371">1371</td><td class="line"> <span class='comment'>* some extra effort in isl_basic_map_make_strides_explicit.</span></td></tr>
+<tr><td class="num" id="LN1372">1372</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN1373">1373</td><td class="line"><span class='keyword'>static</span> <span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_map *isl_map_local_affine_hull(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_map *map)</td></tr>
+<tr><td class="num" id="LN1374">1374</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN1375">1375</td><td class="line">	<span class='keyword'>int</span> i;</td></tr>
+<tr><td class="num" id="LN1376">1376</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1377">1377</td><td class="line">	map = isl_map_cow(map);</td></tr>
+<tr><td class="num" id="LN1378">1378</td><td class="line">	<span class='keyword'>if</span> (!map)</td></tr>
+<tr><td class="num" id="LN1379">1379</td><td class="line">		<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1380">1380</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1381">1381</td><td class="line">	<span class='keyword'>for</span> (i = 0; i &lt; map-&gt;n; ++i) {</td></tr>
+<tr><td class="num" id="LN1382">1382</td><td class="line">		map-&gt;p[i] = isl_basic_map_affine_hull(map-&gt;p[i]);</td></tr>
+<tr><td class="num" id="LN1383">1383</td><td class="line">		map-&gt;p[i] = isl_basic_map_gauss(map-&gt;p[i], <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>);</td></tr>
+<tr><td class="num" id="LN1384">1384</td><td class="line">		map-&gt;p[i] = isl_basic_map_make_strides_explicit(map-&gt;p[i]);</td></tr>
+<tr><td class="num" id="LN1385">1385</td><td class="line">		<span class='keyword'>if</span> (!map-&gt;p[i])</td></tr>
+<tr><td class="num" id="LN1386">1386</td><td class="line">			<span class='keyword'>return</span> isl_map_free(map);</td></tr>
+<tr><td class="num" id="LN1387">1387</td><td class="line">	}</td></tr>
+<tr><td class="num" id="LN1388">1388</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1389">1389</td><td class="line">	<span class='keyword'>return</span> map;</td></tr>
+<tr><td class="num" id="LN1390">1390</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1391">1391</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1392">1392</td><td class="line"><span class='keyword'>static</span> <span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> <span class='macro'>isl_set<span class='expansion'>isl_map</span></span> *isl_set_local_affine_hull(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> <span class='macro'>isl_set<span class='expansion'>isl_map</span></span> *set)</td></tr>
+<tr><td class="num" id="LN1393">1393</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN1394">1394</td><td class="line">	<span class='keyword'>return</span> isl_map_local_affine_hull(set);</td></tr>
+<tr><td class="num" id="LN1395">1395</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1396">1396</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1397">1397</td><td class="line"><span class='comment'>/* Return an empty basic map living in the same space as "map".</span></td></tr>
+<tr><td class="num" id="LN1398">1398</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN1399">1399</td><td class="line"><span class='keyword'>static</span> <span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_basic_map *replace_map_by_empty_basic_map(</td></tr>
+<tr><td class="num" id="LN1400">1400</td><td class="line">	<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_map *map)</td></tr>
+<tr><td class="num" id="LN1401">1401</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN1402">1402</td><td class="line">	isl_space *space;</td></tr>
+<tr><td class="num" id="LN1403">1403</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1404">1404</td><td class="line">	space = isl_map_get_space(map);</td></tr>
+<tr><td class="num" id="LN1405">1405</td><td class="line">	isl_map_free(map);</td></tr>
+<tr><td class="num" id="LN1406">1406</td><td class="line">	<span class='keyword'>return</span> isl_basic_map_empty(space);</td></tr>
+<tr><td class="num" id="LN1407">1407</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1408">1408</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1409">1409</td><td class="line"><span class='comment'>/* Compute the affine hull of "map".</span></td></tr>
+<tr><td class="num" id="LN1410">1410</td><td class="line"> <span class='comment'>*</span></td></tr>
+<tr><td class="num" id="LN1411">1411</td><td class="line"> <span class='comment'>* We first compute the affine hull of each basic map separately.</span></td></tr>
+<tr><td class="num" id="LN1412">1412</td><td class="line"> <span class='comment'>* Then we align the divs and recompute the affine hulls of the basic</span></td></tr>
+<tr><td class="num" id="LN1413">1413</td><td class="line"> <span class='comment'>* maps since some of them may now have extra divs.</span></td></tr>
+<tr><td class="num" id="LN1414">1414</td><td class="line"> <span class='comment'>* In order to avoid performing parametric integer programming to</span></td></tr>
+<tr><td class="num" id="LN1415">1415</td><td class="line"> <span class='comment'>* compute explicit expressions for the divs, possible leading to</span></td></tr>
+<tr><td class="num" id="LN1416">1416</td><td class="line"> <span class='comment'>* an explosion in the number of basic maps, we first drop all unknown</span></td></tr>
+<tr><td class="num" id="LN1417">1417</td><td class="line"> <span class='comment'>* divs before aligning the divs.  Note that isl_map_local_affine_hull tries</span></td></tr>
+<tr><td class="num" id="LN1418">1418</td><td class="line"> <span class='comment'>* to make sure that all stride information is explicitly available</span></td></tr>
+<tr><td class="num" id="LN1419">1419</td><td class="line"> <span class='comment'>* in terms of known divs.  This involves calling isl_basic_set_gauss,</span></td></tr>
+<tr><td class="num" id="LN1420">1420</td><td class="line"> <span class='comment'>* which is also needed because affine_hull assumes its input has been gaussed,</span></td></tr>
+<tr><td class="num" id="LN1421">1421</td><td class="line"> <span class='comment'>* while isl_map_affine_hull may be called on input that has not been gaussed,</span></td></tr>
+<tr><td class="num" id="LN1422">1422</td><td class="line"> <span class='comment'>* in particular from initial_facet_constraint.</span></td></tr>
+<tr><td class="num" id="LN1423">1423</td><td class="line"> <span class='comment'>* Similarly, align_divs may reorder some divs so that we need to</span></td></tr>
+<tr><td class="num" id="LN1424">1424</td><td class="line"> <span class='comment'>* gauss the result again.</span></td></tr>
+<tr><td class="num" id="LN1425">1425</td><td class="line"> <span class='comment'>* Finally, we combine the individual affine hulls into a single</span></td></tr>
+<tr><td class="num" id="LN1426">1426</td><td class="line"> <span class='comment'>* affine hull.</span></td></tr>
+<tr><td class="num" id="LN1427">1427</td><td class="line"> <span class='comment'>*/</span></td></tr>
+<tr><td class="num" id="LN1428">1428</td><td class="line"><span class='macro'>__isl_give<span class='expansion'>__attribute__((cf_returns_retained))</span></span> isl_basic_map *isl_map_affine_hull(<span class='macro'>__isl_take<span class='expansion'>__attribute__((cf_consumed))</span></span> isl_map *map)</td></tr>
+<tr><td class="num" id="LN1429">1429</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN1430">1430</td><td class="line">	<span class='keyword'>struct</span> isl_basic_map *model = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1431">1431</td><td class="line">	<span class='keyword'>struct</span> isl_basic_map *hull = <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1432">1432</td><td class="line">	<span class='keyword'>struct</span> <span class='macro'>isl_set<span class='expansion'>isl_map</span></span> *set;</td></tr>
+<tr><td class="num" id="LN1433">1433</td><td class="line">	<span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *bset;</td></tr>
+<tr><td class="num" id="LN1434">1434</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1435">1435</td><td class="line">	map = isl_map_detect_equalities(map);</td></tr>
+<tr><td class="num" id="LN1436">1436</td><td class="line">	map = isl_map_local_affine_hull(map);</td></tr>
+<tr><td class="num" id="LN1437">1437</td><td class="line">	map = isl_map_remove_empty_parts(map);</td></tr>
+<tr><td class="num" id="LN1438">1438</td><td class="line">	map = isl_map_remove_unknown_divs(map);</td></tr>
+<tr><td class="num" id="LN1439">1439</td><td class="line">	map = isl_map_align_divs(map);</td></tr>
+<tr><td class="num" id="LN1440">1440</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1441">1441</td><td class="line">	<span class='keyword'>if</span> (!map)</td></tr>
+<tr><td class="num" id="LN1442">1442</td><td class="line">		<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1443">1443</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1444">1444</td><td class="line">	<span class='keyword'>if</span> (map-&gt;n == 0)</td></tr>
+<tr><td class="num" id="LN1445">1445</td><td class="line">		<span class='keyword'>return</span> replace_map_by_empty_basic_map(map);</td></tr>
+<tr><td class="num" id="LN1446">1446</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1447">1447</td><td class="line">	model = isl_basic_map_copy(map-&gt;p[0]);</td></tr>
+<tr><td class="num" id="LN1448">1448</td><td class="line">	set = isl_map_underlying_set(map);</td></tr>
+<tr><td class="num" id="LN1449">1449</td><td class="line">	set = isl_set_cow(set);</td></tr>
+<tr><td class="num" id="LN1450">1450</td><td class="line">	set = isl_set_local_affine_hull(set);</td></tr>
+<tr><td class="num" id="LN1451">1451</td><td class="line">	<span class='keyword'>if</span> (!set)</td></tr>
+<tr><td class="num" id="LN1452">1452</td><td class="line">		<span class='keyword'>goto</span> error;</td></tr>
+<tr><td class="num" id="LN1453">1453</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1454">1454</td><td class="line">	<span class='keyword'>while</span> (set-&gt;n &gt; 1)</td></tr>
+<tr><td class="num" id="LN1455">1455</td><td class="line">		set-&gt;p[0] = affine_hull(set-&gt;p[0], set-&gt;p[--set-&gt;n]);</td></tr>
+<tr><td class="num" id="LN1456">1456</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1457">1457</td><td class="line">	bset = isl_basic_set_copy(set-&gt;p[0]);</td></tr>
+<tr><td class="num" id="LN1458">1458</td><td class="line">	hull = isl_basic_map_overlying_set(bset, model);</td></tr>
+<tr><td class="num" id="LN1459">1459</td><td class="line">	isl_set_free(set);</td></tr>
+<tr><td class="num" id="LN1460">1460</td><td class="line">	hull = isl_basic_map_simplify(hull);</td></tr>
+<tr><td class="num" id="LN1461">1461</td><td class="line">	<span class='keyword'>return</span> isl_basic_map_finalize(hull);</td></tr>
+<tr><td class="num" id="LN1462">1462</td><td class="line">error:</td></tr>
+<tr><td class="num" id="LN1463">1463</td><td class="line">	isl_basic_map_free(model);</td></tr>
+<tr><td class="num" id="LN1464">1464</td><td class="line">	isl_set_free(set);</td></tr>
+<tr><td class="num" id="LN1465">1465</td><td class="line">	<span class='keyword'>return</span> <span class='macro'>NULL<span class='expansion'>((void*)0)</span></span>;</td></tr>
+<tr><td class="num" id="LN1466">1466</td><td class="line">}</td></tr>
+<tr><td class="num" id="LN1467">1467</td><td class="line"> </td></tr>
+<tr><td class="num" id="LN1468">1468</td><td class="line"><span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *isl_set_affine_hull(<span class='keyword'>struct</span> <span class='macro'>isl_set<span class='expansion'>isl_map</span></span> *set)</td></tr>
+<tr><td class="num" id="LN1469">1469</td><td class="line">{</td></tr>
+<tr><td class="num" id="LN1470">1470</td><td class="line">	<span class='keyword'>return</span> (<span class='keyword'>struct</span> <span class='macro'>isl_basic_set<span class='expansion'>isl_basic_map</span></span> *)</td></tr>
+<tr><td class="num" id="LN1471">1471</td><td class="line">		isl_map_affine_hull((<span class='keyword'>struct</span> isl_map *)set);</td></tr>
+<tr><td class="num" id="LN1472">1472</td><td class="line">}</td></tr>
+</table></body></html>
